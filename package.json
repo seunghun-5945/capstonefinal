@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
-    "electron:dev": "concurrently \"yarn dev\" \"wait-on http://localhost:5173 && yarn electron\""
+    "electron:dev": "concurrently \"yarn dev\" \"wait-on http://localhost:5173 && yarn electron\"",
+    "server": "node server.js",
+    "start": "concurrently \"yarn dev\" \"yarn server\""
   },
   "dependencies": {
     "@babel/runtime": "^7.25.6",
@@ -16,10 +18,14 @@
     "ace-builds": "^1.36.2",
     "axios": "^1.7.7",
     "concurrently": "^9.0.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "electron": "^32.1.2",
+    "express": "^4.21.1",
     "lucide-react": "^0.454.0",
     "monaco-editor": "^0.52.0",
     "monaco-languageclient": "^8.8.3",
+    "openai": "^4.71.1",
     "react": "^18.3.1",
     "react-ace": "^12.0.0",
     "react-console-emulator": "^5.0.2",
@@ -28,6 +34,8 @@
     "react-redux": "^9.1.2",
     "react-router-dom": "^6.26.2",
     "redux": "^5.0.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "styled-components": "^6.1.13",
     "uuid": "^11.0.2",
     "vscode-ws-jsonrpc": "^3.3.2",

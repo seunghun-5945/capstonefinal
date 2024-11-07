@@ -11,6 +11,7 @@ import axios from "axios";
 import { useNavigate } from 'react-router-dom';
 import { FolderIcon, FileIcon, ChevronRight, ChevronDown } from 'lucide-react';
 
+// TreeItem Component
 const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState([]);
@@ -35,16 +36,6 @@ const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
         }
       }
       setIsOpen(!isOpen);
-    } else {
-      onSelect(item);
-    }
-  };
-
-  // 파일명 클릭 시 처리하는 함수 추가
-  const handleFileClick = (e) => {
-    e.stopPropagation();
-    if (!isDirectory) {
-      onSelect(item);
     }
   };
 
@@ -53,9 +44,9 @@ const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
       <div
         className="flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer"
         style={{ paddingLeft: `${depth * 20}px` }}
-        onClick={handleToggle} // handleToggle로 변경
+        onClick={() => onSelect(item)}
       >
-        <span className="mr-1">
+        <span className="mr-1" onClick={handleToggle}>
           {isDirectory && (
             isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
           )}
@@ -65,15 +56,10 @@ const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
         ) : (
           <FileIcon className="w-4 h-4 text-gray-500 mr-2" />
         )}
-        <span 
-          className="text-sm"
-          onClick={handleFileClick} // 파일명 클릭 시 처리
-        >
-          {item.name}
-        </span>
+        <span className="text-sm">{item.name}</span>
       </div>
       
-      {isOpen && children.length > 0 && (
+      {isDirectory && isOpen && children.length > 0 && (
         <div className="ml-2">
           {children.map((child, index) => (
             <TreeItem
@@ -91,28 +77,7 @@ const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
   );
 };
 
-// FileExplorer 컴포넌트 내부의 handleFileSelect 함수도 수정
-const handleFileSelect = async (file) => {
-  if (file.type === 'file') {
-    setSelectedFile(file.path);
-    try {
-      const response = await axios.get('http://localhost:8000/users/api/file-content', {
-        params: {
-          repo_name: selectedRepo,
-          file_path: file.path
-        },
-        headers
-      });
-      setFileContent(response.data.content);
-      onFileSelect && onFileSelect(file.path);  // 부모 컴포넌트에 파일 경로 전달
-      onFileContentChange && onFileContentChange(response.data.content);  // 부모 컴포넌트에 파일 내용 전달
-    } catch (error) {
-      console.error('Error fetching file content:', error);
-    }
-  }
-};
-
-const FileExplorer = ({ onFileSelect }) => {
+const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
   const [currentPath, setCurrentPath] = useState("");
   const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
@@ -173,25 +138,26 @@ const FileExplorer = ({ onFileSelect }) => {
     }
   };
 
-  const handleFileSelect = async (file) => {
-    if (file.type === 'file') {
-      setSelectedFile(file.path);
-      try {
-        const response = await axios.get('http://localhost:8000/users/api/file-content', {
-          params: {
-            repo_name: selectedRepo,
-            file_path: file.path
-          },
-          headers
-        });
-        setFileContent(response.data.content);
-        onFileSelect && onFileSelect(file.path);  // 부모 컴포넌트에 파일 경로 전달
-        onFileContentChange && onFileContentChange(response.data.content);  // 부모 컴포넌트에 파일 내용 전달
-      } catch (error) {
-        console.error('Error fetching file content:', error);
-      }
+// FileExplorer.jsx의 handleFileSelect 함수 수정
+const handleFileSelect = async (file) => {
+  if (file.type === 'file') {
+    setSelectedFile(file.path);
+    try {
+      const response = await axios.get('http://localhost:8000/users/api/file-content', {
+        params: {
+          repo_name: selectedRepo,
+          file_path: file.path
+        },
+        headers
+      });
+      setFileContent(response.data.content);
+      // 부모 컴포넌트로 파일 내용 전달
+      onFileContentChange(response.data.content);
+    } catch (error) {
+      console.error('Error fetching file content:', error);
     }
-  };
+  }
+};
 
   const handleUpdateFile = async () => {
     if (!commitMessage) {
@@ -290,70 +256,65 @@ const FileExplorer = ({ onFileSelect }) => {
   };
 
   return (
-    <div className="p-4">
-      <h3 className="text-lg font-medium mb-2">File Explorer</h3>
-      {error && <div className="text-red-500 mb-2 text-sm">{error}</div>}
+    <div>
+      <h3>File Explorer</h3>
+      {error && <div>{error}</div>}
       <div className="text-sm mb-2 break-all">{currentPath}</div>
       <button
         onClick={handleParentDirectoryClick}
-        className="mb-2 px-2 py-1 text-sm bg-gray-700 text-white rounded hover:bg-gray-600"
       >
         Up to Parent
       </button>
       <button onClick={handleLogin}>GitHub로 로그인</button>
       <select 
-              onChange={(e) => handleRepoSelect(e.target.value)}
-              className="w-full p-2 border rounded"
-            >
-              <option value="">레포지토리 선택</option>
-              {repos.map(repo => (
-                <option key={repo} value={repo}>{repo}</option>
-              ))}
+        onChange={(e) => handleRepoSelect(e.target.value)}
+      >
+        <option value="">레포지토리 선택</option>
+        {repos.map(repo => (
+          <option key={repo} value={repo}>{repo}</option>
+        ))}
       </select>
       {files.map((item, index) => (
-                <TreeItem
-                  key={`${item.path}-${index}`}
-                  item={item}
-                  onSelect={handleFileSelect}
-                  selectedRepo={selectedRepo}
-                  headers={headers}
-                />
-              ))}
-               {selectedFile && (
-            <div className="space-y-4">
-              <textarea
-                value={fileContent}
-                onChange={(e) => setFileContent(e.target.value)}
-                className="w-full h-64 p-2 border rounded"
-              />
-              <input
-                type="text"
-                placeholder="커밋 메시지"
-                value={commitMessage}
-                onChange={(e) => setCommitMessage(e.target.value)}
-                className="w-full p-2 border rounded"
-              />
-              <button 
-                onClick={handleUpdateFile}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                변경 사항 커밋
-              </button>
-            </div>
-          )}
-      <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+        <TreeItem
+          key={`${item.path}-${index}`}
+          item={item}
+          onSelect={handleFileSelect}
+          selectedRepo={selectedRepo}
+          headers={headers}
+        />
+        ))}
+      {selectedFile && (
+        <div className="space-y-4">
+          <textarea
+            value={fileContent}
+            onChange={(e) => setFileContent(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="커밋 메시지"
+            value={commitMessage}
+            onChange={(e) => setCommitMessage(e.target.value)}
+            className="w-full p-2 border rounded"
+          />
+          <button 
+            onClick={handleUpdateFile}
+          >
+            변경 사항 커밋
+          </button>
+        </div>
+      )}
+      <div>
         {files.map((file, index) => (
           <div
             key={index}
             onClick={() => handleItemClick(file)}
-            className="flex items-center p-2 hover:bg-gray-700 cursor-pointer rounded"
           >
             {file.isDirectory ? (
               <FaFolder className="text-yellow-400" />
             ) : (
               getFileIcon(file.name)
             )}
-            <span className="ml-2 text-sm">{file.name}</span>
+            <span>{file.name}</span>
           </div>
         ))}
       </div>

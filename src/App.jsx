@@ -1,4 +1,5 @@
-import React, { useState, useRef } from "react";
+// src/App.jsx
+import React, { useState, useRef } from "react"; // useRef import 추가
 import FileExplorer from "./components/FileExplorer";
 import Editor from "./components/Editor";
 import Terminal from "./components/Terminal";
@@ -6,17 +7,10 @@ import VirtualEnvironmentSelector from "./components/VirtualEnvironmentSelector"
 
 const App = () => {
   const [currentFile, setCurrentFile] = useState(null);
-  const [fileContent, setFileContent] = useState("");
-  const terminalRef = useRef(null);
+  const terminalRef = useRef(null); // useRef로 선언
 
-  // 파일 선택 시 실행되는 핸들러
   const handleFileSelect = (filePath) => {
     setCurrentFile(filePath);
-  };
-
-  // 파일 내용 변경 시 실행되는 핸들러
-  const handleFileContentChange = (content) => {
-    setFileContent(content);
   };
 
   const isFileSelected = currentFile !== null;
@@ -24,12 +18,9 @@ const App = () => {
   return (
     <div style={{ display: "flex", height: "100vh" }}>
       <div
-        style={{ width: "250px", backgroundColor: "#1e1e1e", color: "#fff" }}
+        style={{ width: "200px", backgroundColor: "#1e1e1e", color: "#fff" }}
       >
-        <FileExplorer 
-          onFileSelect={handleFileSelect}
-          onFileContentChange={handleFileContentChange} 
-        />
+        <FileExplorer onFileSelect={handleFileSelect} />
         <VirtualEnvironmentSelector />
       </div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -39,11 +30,18 @@ const App = () => {
             backgroundColor: isFileSelected ? "#fff" : "#f0f0f0",
           }}
         >
-          <Editor
-            filePath={currentFile}
-            terminalRef={terminalRef}
-            initialContent={fileContent}  // 초기 파일 내용 전달
-          />
+          {isFileSelected ? (
+            <Editor
+              filePath={currentFile}
+              terminalRef={terminalRef} // terminalRef 전달
+            />
+          ) : (
+            <div
+              style={{ padding: "20px", textAlign: "center", color: "#888" }}
+            >
+              Please select a file to edit
+            </div>
+          )}
         </div>
         <div style={{ flex: "0 0 200px" }}>
           <Terminal

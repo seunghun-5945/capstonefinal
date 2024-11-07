@@ -12,7 +12,7 @@ import "ace-builds/src-noconflict/theme-monokai";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
-const Editor = ({ filePath, terminalRef, initialContent  }) => {
+const Editor = ({ filePath, terminalRef, initialContent }) => {
   const editorRef = useRef(null);
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("javascript");

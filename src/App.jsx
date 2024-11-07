@@ -3,6 +3,14 @@ import FileExplorer from "./components/FileExplorer";
 import Editor from "./components/Editor";
 import Terminal from "./components/Terminal";
 import VirtualEnvironmentSelector from "./components/VirtualEnvironmentSelector";
+import styled from "styled-components";
+
+const Container = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  border: 3px solid blue;
+`;
 
 const App = () => {
   const [currentFile, setCurrentFile] = useState(null);
@@ -22,7 +30,7 @@ const App = () => {
   const isFileSelected = currentFile !== null;
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
+    <Container style={{ display: "flex", height: "100vh" }}>
       <div
         style={{ width: "250px", backgroundColor: "#1e1e1e", color: "#fff" }}
       >
@@ -53,7 +61,7 @@ const App = () => {
           />
         </div>
       </div>
-    </div>
+    </Container>
   );
 };
 

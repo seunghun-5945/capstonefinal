@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import styled from "styled-components";
 import AceEditor from "react-ace";
 
 // Ace Editor 테마와 언어 모드 import
@@ -12,7 +13,13 @@ import "ace-builds/src-noconflict/theme-monokai";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
-const Editor = ({ filePath, terminalRef, initialContent  }) => {
+const Container = styled.div`
+  width: 70%;
+  height: 100%;
+  border: 3px solid green;
+`;
+
+const Editor = ({ filePath, terminalRef, initialContent }) => {
   const editorRef = useRef(null);
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("javascript");

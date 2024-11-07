@@ -10,8 +10,100 @@ import {
 import axios from "axios";
 import { useNavigate } from 'react-router-dom';
 import { FolderIcon, FileIcon, ChevronRight, ChevronDown } from 'lucide-react';
+import styled from "styled-components";
+import VirtualEnvironmentSelector from "./VirtualEnvironmentSelector";
 
-// TreeItem Component
+// 스타일 컴포넌트 정의
+const Container = styled.div`
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+`;
+
+const Header = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+`;
+
+const FileTreeContainer = styled.div`
+  height: 50%;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+`;
+
+const FileContentSection = styled.div`
+  height: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+`;
+
+const StyledTextarea = styled.textarea`
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+`;
+
+const CommitContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const CommitInput = styled.input`
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+`;
+
+const CommitButton = styled.button`
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+`;
+
+const FileListContainer = styled.div`
+  height: 100%;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin-top: 1rem;
+  max-height: 10rem;
+`;
+
+const FileItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #f3f4f6;
+  }
+`;
+
 const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState([]);
@@ -26,11 +118,23 @@ const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
             params: { repo_name: selectedRepo, path: item.path },
             headers
           });
-          setChildren(response.data.map(file => ({
-            name: file.name,
-            path: file.path,
-            type: file.type
-          })));
+          // 폴더가 먼저 오도록 정렬
+          const sortedFiles = response.data
+            .map(file => ({
+              name: file.name,
+              path: file.path,
+              type: file.type
+            }))
+            .sort((a, b) => {
+              // 둘 다 디렉토리거나 둘 다 파일이면 이름순
+              if ((a.type === 'dir' && b.type === 'dir') || 
+                  (a.type === 'file' && b.type === 'file')) {
+                return a.name.localeCompare(b.name);
+              }
+              // 디렉토리가 먼저 오도록
+              return a.type === 'dir' ? -1 : 1;
+            });
+          setChildren(sortedFiles);
         } catch (error) {
           console.error('Error fetching directory contents:', error);
         }
@@ -256,56 +360,60 @@ const handleFileSelect = async (file) => {
   };
 
   return (
-    <div>
-      <h3>File Explorer</h3>
-      {error && <div>{error}</div>}
-      <div className="text-sm mb-2 break-all">{currentPath}</div>
-      <button
-        onClick={handleParentDirectoryClick}
-      >
-        Up to Parent
-      </button>
-      <button onClick={handleLogin}>GitHub로 로그인</button>
-      <select 
-        onChange={(e) => handleRepoSelect(e.target.value)}
-      >
-        <option value="">레포지토리 선택</option>
-        {repos.map(repo => (
-          <option key={repo} value={repo}>{repo}</option>
+    <Container>
+      <Header>
+        <h3>File Explorer</h3>
+        {error && <div>{error}</div>}
+        <div className="text-sm mb-2 break-all">{currentPath}</div>
+      </Header>
+
+      <ButtonGroup>
+        <button onClick={handleParentDirectoryClick}>Up to Parent</button>
+        <button onClick={handleLogin}>GitHub로 로그인</button>
+        <select onChange={(e) => handleRepoSelect(e.target.value)}>
+          <option value="">레포지토리 선택</option>
+          {repos.map(repo => (
+            <option key={repo} value={repo}>{repo}</option>
+          ))}
+        </select>
+      </ButtonGroup>
+
+      <FileTreeContainer>
+        {files.map((item, index) => (
+          <TreeItem
+            key={`${item.path}-${index}`}
+            item={item}
+            onSelect={handleFileSelect}
+            selectedRepo={selectedRepo}
+            headers={headers}
+          />
         ))}
-      </select>
-      {files.map((item, index) => (
-        <TreeItem
-          key={`${item.path}-${index}`}
-          item={item}
-          onSelect={handleFileSelect}
-          selectedRepo={selectedRepo}
-          headers={headers}
-        />
-        ))}
+        <VirtualEnvironmentSelector />
+      </FileTreeContainer>
+
       {selectedFile && (
-        <div className="space-y-4">
-          <textarea
+        <FileContentSection>
+          <StyledTextarea
             value={fileContent}
             onChange={(e) => setFileContent(e.target.value)}
           />
-          <input
-            type="text"
-            placeholder="커밋 메시지"
-            value={commitMessage}
-            onChange={(e) => setCommitMessage(e.target.value)}
-            className="w-full p-2 border rounded"
-          />
-          <button 
-            onClick={handleUpdateFile}
-          >
-            변경 사항 커밋
-          </button>
-        </div>
+          <CommitContainer>
+            <CommitInput
+              type="text"
+              placeholder="커밋 메시지"
+              value={commitMessage}
+              onChange={(e) => setCommitMessage(e.target.value)}
+            />
+            <CommitButton onClick={handleUpdateFile}>
+              변경 사항 커밋
+            </CommitButton>
+          </CommitContainer>
+        </FileContentSection>
       )}
-      <div>
+
+      <FileListContainer>
         {files.map((file, index) => (
-          <div
+          <FileItem
             key={index}
             onClick={() => handleItemClick(file)}
           >
@@ -315,10 +423,10 @@ const handleFileSelect = async (file) => {
               getFileIcon(file.name)
             )}
             <span>{file.name}</span>
-          </div>
+          </FileItem>
         ))}
-      </div>
-    </div>
+      </FileListContainer>
+    </Container>
   );
 };
 

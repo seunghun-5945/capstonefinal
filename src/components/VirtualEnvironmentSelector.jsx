@@ -1,4 +1,17 @@
 import React, { useState, useEffect } from "react";
+import styled from "styled-components";
+import { TbRefresh } from "react-icons/tb";
+
+const Container = styled.div`
+  width: 100%;
+  height: 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-top: 1px solid gray;
+`;
 
 const VirtualEnvironmentSelector = () => {
   const [environments, setEnvironments] = useState([]);
@@ -144,16 +157,14 @@ const VirtualEnvironmentSelector = () => {
   };
 
   return (
-    <div className="p-4 border-b border-gray-200">
-      <h3 className="text-lg font-medium mb-2">Python Environments</h3>
+    <Container>
+      <h3>Python 가상환경 설정</h3>
       <div className="mb-2">
-        <button
-          className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+        <TbRefresh 
           onClick={loadEnvironments}
+          style={{fontSize:"30px"}}
           disabled={loading}
-        >
-          {loading ? "Loading..." : "Refresh Environments"}
-        </button>
+        />
       </div>
 
       {loading && (
@@ -172,7 +183,6 @@ const VirtualEnvironmentSelector = () => {
 
       {environments.length > 0 ? (
         <select
-          className="w-full p-2 border rounded bg-gray-700 text-white"
           onChange={(e) => {
             const env = environments[e.target.value];
             if (env) handleActivateEnv(env);
@@ -205,7 +215,7 @@ const VirtualEnvironmentSelector = () => {
           Active: {activeEnv.name} ({activeEnv.type})
         </div>
       )}
-    </div>
+    </Container>
   );
 };
 

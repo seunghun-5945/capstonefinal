@@ -12,54 +12,66 @@ import { useNavigate } from 'react-router-dom';
 import { FolderIcon, FileIcon, ChevronRight, ChevronDown } from 'lucide-react';
 import styled from "styled-components";
 import VirtualEnvironmentSelector from "./VirtualEnvironmentSelector";
+import { PiArrowFatLineUpDuotone } from "react-icons/pi";
 
-// 스타일 컴포넌트 정의
 const Container = styled.div`
+  width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  align-items: center;
 `;
 
 const Header = styled.div`
-  margin-bottom: 1rem;
+  width: 100%:
+  height: 10%;
+  padding: 3%;
+  color: white;
+  border-bottom: 1px solid gray;
 `;
 
 const ButtonGroup = styled.div`
+  width: 100%;
+  height: 5%;
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  align-items: center;
+  justify-content: space-around;
+  border-bottom: 1px solid gray;
 `;
 
 const FileTreeContainer = styled.div`
+  width: 100%;  
   height: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start
+  justify-content: center;
   overflow-y: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
+  color: white;
+  margin-top: 5%;
+  padding: 10%;
 `;
 
 const FileContentSection = styled.div`
+  width: 100%;
   height: 50%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
+  color: white;
 `;
 
 const StyledTextarea = styled.textarea`
-  flex: 1;
+  width: 100%;
+  height: 100%;
   overflow-y: auto;
   padding: 0.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
 `;
 
 const CommitContainer = styled.div`
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
 `;
 
 const CommitInput = styled.input`
@@ -98,6 +110,7 @@ const FileItem = styled.div`
   gap: 0.5rem;
   padding: 0.25rem;
   cursor: pointer;
+  color: white;
 
   &:hover {
     background-color: #f3f4f6;
@@ -144,23 +157,22 @@ const TreeItem = ({ item, depth = 0, onSelect, selectedRepo, headers }) => {
   };
 
   return (
-    <div className="w-full">
+    <div>
       <div
-        className="flex items-center py-1 px-2 hover:bg-gray-100 cursor-pointer"
         style={{ paddingLeft: `${depth * 20}px` }}
         onClick={() => onSelect(item)}
       >
-        <span className="mr-1" onClick={handleToggle}>
+        <span onClick={handleToggle}>
           {isDirectory && (
-            isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+            isOpen ? <ChevronDown/> : <ChevronRight/>
           )}
         </span>
         {isDirectory ? (
-          <FolderIcon className="w-4 h-4 text-yellow-500 mr-2" />
+          <FolderIcon/>
         ) : (
-          <FileIcon className="w-4 h-4 text-gray-500 mr-2" />
+          <FileIcon/>
         )}
-        <span className="text-sm">{item.name}</span>
+        <span>{item.name}</span>
       </div>
       
       {isDirectory && isOpen && children.length > 0 && (
@@ -283,11 +295,6 @@ const handleFileSelect = async (file) => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('github_token');
-    navigate('/');
-  };
-
   useEffect(() => {
     const initializeFileExplorer = async () => {
       try {
@@ -364,12 +371,14 @@ const handleFileSelect = async (file) => {
       <Header>
         <h3>File Explorer</h3>
         {error && <div>{error}</div>}
-        <div className="text-sm mb-2 break-all">{currentPath}</div>
+        <div>{currentPath}</div>
       </Header>
 
       <ButtonGroup>
-        <button onClick={handleParentDirectoryClick}>Up to Parent</button>
-        <button onClick={handleLogin}>GitHub로 로그인</button>
+        <PiArrowFatLineUpDuotone 
+          onClick={handleParentDirectoryClick} 
+          style={{color:"white", cursor:"pointer", fontSize:"25px"}}
+        />
         <select onChange={(e) => handleRepoSelect(e.target.value)}>
           <option value="">레포지토리 선택</option>
           {repos.map(repo => (
@@ -388,10 +397,9 @@ const handleFileSelect = async (file) => {
             headers={headers}
           />
         ))}
-        <VirtualEnvironmentSelector />
       </FileTreeContainer>
 
-      {selectedFile && (
+      {/* {selectedFile && (
         <FileContentSection>
           <StyledTextarea
             value={fileContent}
@@ -409,23 +417,24 @@ const handleFileSelect = async (file) => {
             </CommitButton>
           </CommitContainer>
         </FileContentSection>
-      )}
+      )} */}
 
-      <FileListContainer>
+      {/* <FileListContainer>
         {files.map((file, index) => (
           <FileItem
             key={index}
             onClick={() => handleItemClick(file)}
           >
             {file.isDirectory ? (
-              <FaFolder className="text-yellow-400" />
+              <FaFolder/>
             ) : (
               getFileIcon(file.name)
             )}
             <span>{file.name}</span>
           </FileItem>
         ))}
-      </FileListContainer>
+      </FileListContainer> */}
+              <VirtualEnvironmentSelector />
     </Container>
   );
 };

@@ -14,10 +14,11 @@ import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
 const Container = styled.div`
-  width: 70%;
+  width: 100%;
   height: 100%;
-  border: 3px solid green;
-`;
+  display: flex;
+  flex-direction: column;
+`; 
 
 const Editor = ({ filePath, terminalRef, initialContent }) => {
   const editorRef = useRef(null);
@@ -131,7 +132,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <Container>
       <div
         className="editor-toolbar"
         style={{
@@ -145,7 +146,6 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
       >
         <button
           onClick={handleSave}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
         >
           Save
         </button>
@@ -165,7 +165,6 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
             {isRunning && (
               <button
                 onClick={handleStopCode}
-                className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
               >
                 Stop
               </button>
@@ -173,7 +172,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           </>
         )}
         {filePath && (
-          <span className="text-gray-400 text-sm ml-2">{filePath}</span>
+          <span>{filePath}</span>
         )}
       </div>
       <div style={{ flex: 1, position: "relative" }}>
@@ -200,7 +199,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           }}
         />
       </div>
-    </div>
+    </Container>
   );
 };
 

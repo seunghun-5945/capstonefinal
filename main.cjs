@@ -10,8 +10,10 @@ let childProcess = null;
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1200,
+    width: 1300,
     height: 800,
+    minWidth: 1300,
+    minHeight: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

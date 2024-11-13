@@ -1,8 +1,46 @@
 // src/components/Terminal.jsx
 import React, { useEffect, useRef, useCallback } from "react";
+import styled from "styled-components";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
+
+const Container = styled.div`
+  width: 100%;
+  height: 30%;
+  position: absolute;  
+  bottom: 0;        
+  left: 0;
+  background-color: black;
+  border-top: 1px solid gray;
+  z-index: 10;
+  overflow: auto;     // 추가
+
+  .xterm {
+    height: 100%;
+  }
+
+  // xterm 스크롤바 스타일링
+  .xterm-viewport::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+  }
+
+  .xterm-viewport::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 4px;
+  }
+
+  .xterm-viewport::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  // Firefox를 위한 스크롤바 스타일링
+  .xterm-viewport {
+    scrollbar-width: thin;
+    scrollbar-color: #4a4a4a transparent;
+  }
+`;
 
 const TerminalComponent = ({ onRef }) => {
   const terminalRef = useRef(null);
@@ -107,6 +145,8 @@ const TerminalComponent = ({ onRef }) => {
         background: "#1e1e1e",
         foreground: "#ffffff",
       },
+      scrollback: 1000,  // 스크롤백 버퍼 크기 설정
+      rows: 20,          // 초기 행 수 설정
     });
 
     const fitAddon = new FitAddon();
@@ -163,7 +203,8 @@ const TerminalComponent = ({ onRef }) => {
     };
   }, [handleTermData, onRef]);
 
-  return <div ref={terminalRef} style={{ width: "100%", height: "100%" }} />;
+  return <Container ref={terminalRef} />;
 };
 
 export default TerminalComponent;
+ 

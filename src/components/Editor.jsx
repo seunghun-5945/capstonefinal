@@ -13,12 +13,55 @@ import "ace-builds/src-noconflict/theme-monokai";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
+import { IoIosSave } from "react-icons/io"; 
+import { VscRunAll } from "react-icons/vsc";
+import { TiMediaStop } from "react-icons/ti";
+
 const Container = styled.div`
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
 `; 
+
+const MenuBar = styled.div`
+  width: 100%;
+  height: 10%;
+  background-color: black;
+`;
+
+const EditorFrame = styled.div`
+  width: 100%;
+  height: 90%;
+    .ace_scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+  }
+
+  .ace_scrollbar::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 4px;
+
+    &:hover {
+      background: #5a5a5a;
+    }
+  }
+
+  .ace_scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* 가로 스크롤바 */
+  .ace_scrollbar-h::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  /* 세로 스크롤바 */
+  .ace_scrollbar-v::-webkit-scrollbar {
+    width: 8px;
+  }
+`;
 
 const Editor = ({ filePath, terminalRef, initialContent }) => {
   const editorRef = useRef(null);
@@ -133,7 +176,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
 
   return (
     <Container>
-      <div
+      <MenuBar
         className="editor-toolbar"
         style={{
           padding: "4px 8px",
@@ -144,11 +187,10 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           gap: "8px",
         }}
       >
-        <button
+        <IoIosSave 
           onClick={handleSave}
-        >
-          Save
-        </button>
+          style={{fontSize:"35px", color:"white"}}
+        />
         {filePath && (
           <>
             <button
@@ -162,6 +204,10 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
             >
               {isRunning ? "Running..." : "Run"}
             </button>
+            <VscRunAll 
+              onClick={handleRunCode}
+              disabled={isRunning}
+            />
             {isRunning && (
               <button
                 onClick={handleStopCode}
@@ -172,10 +218,10 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           </>
         )}
         {filePath && (
-          <span>{filePath}</span>
+          <span style={{color:"white"}}>{filePath}</span>
         )}
-      </div>
-      <div style={{ flex: 1, position: "relative" }}>
+      </MenuBar>
+      <EditorFrame>
         <AceEditor
           ref={editorRef}
           mode={editorLanguage}
@@ -197,8 +243,12 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
             tabSize: 2,
             useWorker: false,
           }}
+          style={{
+            // background:"linear-gradient(to right, black ,gray"
+            backgroundColor:"black"
+          }}
         />
-      </div>
+      </EditorFrame>
     </Container>
   );
 };

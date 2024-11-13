@@ -14,7 +14,7 @@ const Container = styled.div`
   background-color: black;
   border-top: 1px solid gray;
   z-index: 10;
-  overflow: auto;     // 추가
+  overflow: auto;
 
   .xterm {
     height: 100%;

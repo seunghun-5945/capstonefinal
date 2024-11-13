@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import AceEditor from "react-ace";
+import AiSupport from "./AiSupport";
 
 // Ace Editor 테마와 언어 모드 import
 import "ace-builds/src-noconflict/mode-javascript";
@@ -16,6 +17,7 @@ import "ace-builds/src-noconflict/ext-language_tools";
 import { IoIosSave } from "react-icons/io"; 
 import { VscRunAll } from "react-icons/vsc";
 import { TiMediaStop } from "react-icons/ti";
+import { IoChatboxEllipsesOutline } from "react-icons/io5";
 
 const Container = styled.div`
   width: 100%;
@@ -33,6 +35,7 @@ const MenuBar = styled.div`
 const EditorFrame = styled.div`
   width: 100%;
   height: 90%;
+  position: relative;
     .ace_scrollbar::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -68,6 +71,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("javascript");
   const [isRunning, setIsRunning] = useState(false);
+  const [openAiSupport, setOpenAiSupport] = useState(true)
 
   // 누나 여기부분 추가해줘 1
   useEffect(() => {
@@ -158,6 +162,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
       setIsRunning(true);
       terminalRef.current.executeCommandFromExternal(command);
     }
+    setIsRunning(!isRunning);
   };
 
   const handleStopCode = async () => {
@@ -172,7 +177,14 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
     } catch (error) {
       console.error("Error stopping code:", error);
     }
+    setIsRunning(!isRunning);
   };
+
+  const handleopenAiSupport = () => {
+    return (
+      setOpenAiSupport(!openAiSupport)
+    )
+  }
 
   return (
     <Container>
@@ -193,33 +205,28 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
         />
         {filePath && (
           <>
-            <button
-              onClick={handleRunCode}
-              disabled={isRunning}
-              className={`px-3 py-1 text-sm rounded focus:outline-none focus:ring-2 ${
-                isRunning
-                  ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-green-500 hover:bg-green-600 focus:ring-green-500"
-              } text-white`}
-            >
-              {isRunning ? "Running..." : "Run"}
-            </button>
-            <VscRunAll 
-              onClick={handleRunCode}
-              disabled={isRunning}
-            />
-            {isRunning && (
-              <button
+            {isRunning ? (
+              <VscRunAll 
+                onClick={handleRunCode}
+                style={{fontSize:"35px", color:"green", cursor:"pointer"}}
+                disabled={isRunning}
+              />
+              ) : (<TiMediaStop 
                 onClick={handleStopCode}
-              >
-                Stop
-              </button>
+                style={{fontSize:"35px", color:"red", cursor:"pointer"}}
+                disabled={isRunning}
+              />
             )}
           </>
         )}
         {filePath && (
           <span style={{color:"white"}}>{filePath}</span>
         )}
+        <IoChatboxEllipsesOutline 
+          onClick={handleopenAiSupport}
+          style={{fontSize:"35px", color:"gray", cursor:"pointer"}}
+        />
+        <span style={{color:"white"}}>AI Support</span>
       </MenuBar>
       <EditorFrame>
         <AceEditor
@@ -248,6 +255,11 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
             backgroundColor:"black"
           }}
         />
+        {openAiSupport && (
+          <AiSupport>
+              asdads
+          </AiSupport>
+        )}
       </EditorFrame>
     </Container>
   );

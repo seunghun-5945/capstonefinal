@@ -44,7 +44,7 @@ const EditorContainer = styled.div`
 `;
 
 
-const App = () => {
+const App = ({  }) => {
   const [currentFile, setCurrentFile] = useState(null);
   const [fileContent, setFileContent] = useState("");
   const [openTerminal, setOpenTerminal] = useState(false);
@@ -105,11 +105,11 @@ const App = () => {
           />
         </EditorContainer>
         {openTerminal && (
-            <Terminal
-              onRef={(ref) => {
-                terminalRef.current = ref;
-              }}
-            />
+        <Terminal
+          onRef={(ref) => {
+            terminalRef.current = ref;
+          }}
+        />
         )}
       </Frame>
     </Container>

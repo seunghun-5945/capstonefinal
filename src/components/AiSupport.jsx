@@ -32,22 +32,27 @@ const StyledInput = styled.input`
 
 const AiSupport = () => {
   const [request, setRequest] = useState("");
+  const [suggest, setSuggest] = useState("");
 
   const sendRequest = () => {
     console.log(request);
-  }
+  };
+
+  const suggestCode = () => {
+    console.log("코드 제안");
+  };
 
   return (
     <Container>
       <h1>임시 AI 응답</h1>
       <OutputArea />
-      <StyledInput 
+      <StyledInput
         onChange={(e) => setRequest(e.target.value)}
         placeholder="텍스트 입력"
       />
-      <button
-        onClick={sendRequest}
-      >임시 전송 버튼</button>
+      <button onClick={sendRequest}>임시 전송 버튼</button>
+
+      <button onClick={suggestCode}>코드제안</button>
     </Container>
   );
 };

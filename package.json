@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "vite build",
     "electron": "electron .",
-    "electron:dev": "concurrently \"yarn dev\" \"wait-on http://localhost:5173 && yarn electron\""
+    "electron:dev": "concurrently \"yarn dev\" \"wait-on http://localhost:5173 && yarn electron\" \"python main.py\""
   },
   "dependencies": {
     "@babel/runtime": "^7.25.6",

@@ -13,6 +13,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/Callback" element={<Callback />} />
       </Routes>
     </React.StrictMode>
-    ,
   </BrowserRouter>
 );

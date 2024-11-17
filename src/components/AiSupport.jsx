@@ -87,13 +87,12 @@ const AiSupport = () => {
       return;
     }
     try {
-      const result = await fetch("http://localhost:8000/api/suggest-code", {
+      const result = await fetch("http://localhost:8000/api/optimize-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        mode: "cors",
         body: JSON.stringify({ code }),
       });
 
@@ -102,10 +101,10 @@ const AiSupport = () => {
       }
 
       const data = await result.json();
-      setResponse(`코드 제안:\n${data.suggestion}`);
+      setResponse(`최적화된 코드:\n${data.optimizedCode}`);
     } catch (error) {
       console.error("Error details:", error);
-      setResponse(`제안 오류: ${error.message}`);
+      setResponse(`최적화 오류: ${error.message}`);
     }
   };
 
@@ -115,14 +114,16 @@ const AiSupport = () => {
       return;
     }
     try {
-      const result = await fetch("http://localhost:8000/api/ask-copilot", {
+      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        mode: "cors",
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          question,
+          code,
+        }),
       });
 
       if (!result.ok) {
@@ -130,7 +131,7 @@ const AiSupport = () => {
       }
 
       const data = await result.json();
-      setResponse(`Copilot 응답:\n${data.answer}`);
+      setResponse(`GPT-4o-Mini 응답:\n${data.answer}`);
     } catch (error) {
       console.error("Error details:", error);
       setResponse(`응답 오류: ${error.message}`);

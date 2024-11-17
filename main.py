@@ -44,8 +44,9 @@ class FileCreate(BaseModel):
     commit_message: str  # 새로 추가된 필드
 
 class GPTRequest(BaseModel):
-    question: str
     code: str
+    question: str = ""  # 질문 필드 추가
+    type: str = "simple"
 
 def get_github_client(token: str):
     return Github(token)
@@ -130,18 +131,23 @@ if not openai.api_key:
 @app.post("/api/gpt-4o-mini")
 async def process_gpt4o_mini(request: GPTRequest):
     try:
-        # API 키 확인
         if not openai.api_key:
-            print("OpenAI API 키가 설정되지 않았습니다.")
             return {"answer": "OpenAI API 키가 설정되지 않았습니다."}
             
-        # 입력값 확인
-        if not request.code or not request.question:
-            return {"answer": "코드와 질문을 모두 입력해주세요."}
+        if not request.code:
+            return {"answer": "코드를 입력해주세요."}
 
-        # GPT에 보낼 프롬프트 구성
-        prompt = f"""
-다음 코드를 분석하고 질문에 답변해주세요:
+        # simple 타입일 때만 질문 필수, optimize와 detailed는 질문 불필요
+        if request.type == "simple":
+            if not request.question:
+                return {"answer": "코드와 질문을 모두 입력해주세요."}
+
+        try:
+            client = openai.OpenAI()
+            
+            if request.type == "simple":
+                prompt = f"""
+다음 코드에 대한 질문에 답변해주세요:
 
 코드:
 {request.code}
@@ -149,35 +155,52 @@ async def process_gpt4o_mini(request: GPTRequest):
 질문:
 {request.question}
 """
-        
-        try:
-            # GPT API 호출
-            client = openai.OpenAI()
+            elif request.type == "optimize":
+                prompt = f"""
+다음 코드를 분석하고 최적화가 필요한 부분을 찾아 개선된 코드를 제안해주세요:
+
+현재 코드:
+{request.code}
+
+다음 사항들을 고려해서 답변해주세요:
+1. 성능 개선 가능성
+2. 코드 가독성 향상
+3. 최신 문법 활용
+4. 잠재적인 버그 예방
+
+개선된 코드와 함께 변경 사항에 대한 설명도 포함해주세요.
+"""
+            else:  # detailed
+                prompt = f"""
+다음 코드를 자세히 분석하고 설명해주세요:
+
+{request.code}
+
+다음 항목들을 포함해서 설명해주세요:
+1. 코드의 전반적인 목적
+2. 주요 기능들의 상세 설명
+3. 사용된 주요 기술이나 패턴
+4. 코드의 장단점
+"""
+
             response = client.chat.completions.create(
-                model="gpt-4o-mini",  # 사용 가능한 모델로 변경
+                model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "당신은 코드를 분석하고 설명하는 전문가입니다. 코드에 대한 질문에 명확하게 답변해주세요."},
+                    {"role": "system", "content": "당신은 코드를 분석하고 설명하는 전문가입니다."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
                 max_tokens=1000
             )
             
-            # GPT 응답 추출
             answer = response.choices[0].message.content
-            print(f"GPT 응답: {answer}")  # 디버깅용 로그
-            
             return {"answer": answer}
             
         except Exception as e:
-            error_msg = f"OpenAI API 오류: {str(e)}"
-            print(error_msg)  # 디버깅용 로그
-            return {"answer": error_msg}
+            return {"answer": f"OpenAI API 오류: {str(e)}"}
             
     except Exception as e:
-        error_msg = f"서버 오류: {str(e)}"
-        print(error_msg)  # 디버깅용 로그
-        return {"answer": error_msg}
+        return {"answer": f"서버 오류: {str(e)}"}
 
 if __name__ == "__main__":
     import uvicorn

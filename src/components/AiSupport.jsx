@@ -81,36 +81,9 @@ const AiSupport = () => {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
 
-  const suggestCode = async () => {
-    if (!code.trim()) {
-      setResponse("코드를 입력해주세요.");
-      return;
-    }
-    try {
-      const result = await fetch("http://localhost:8000/api/optimize-code", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
-      }
-
-      const data = await result.json();
-      setResponse(`최적화된 코드:\n${data.optimizedCode}`);
-    } catch (error) {
-      console.error("Error details:", error);
-      setResponse(`최적화 오류: ${error.message}`);
-    }
-  };
-
   const askCopilot = async () => {
-    if (!question.trim()) {
-      setResponse("질문을 입력해주세요.");
+    if (!code.trim() || !question.trim()) {
+      setResponse("코드와 질문을 모두 입력해주세요.");
       return;
     }
     try {
@@ -121,8 +94,9 @@ const AiSupport = () => {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          question,
           code,
+          question,
+          type: "simple",
         }),
       });
 
@@ -131,10 +105,72 @@ const AiSupport = () => {
       }
 
       const data = await result.json();
-      setResponse(`GPT-4o-Mini 응답:\n${data.answer}`);
+      setResponse(`질문: ${question}\n\n답변:\n${data.answer}`);
     } catch (error) {
       console.error("Error details:", error);
-      setResponse(`응답 오류: ${error.message}`);
+      setResponse(`오류: ${error.message}`);
+    }
+  };
+
+  const getDetailedExplanation = async () => {
+    if (!code.trim()) {
+      setResponse("코드를 입력해주세요.");
+      return;
+    }
+    try {
+      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          code: code.trim(),
+          question: "",
+          type: "detailed",
+        }),
+      });
+
+      if (!result.ok) {
+        throw new Error(`HTTP error! status: ${result.status}`);
+      }
+
+      const data = await result.json();
+      setResponse(data.answer);
+    } catch (error) {
+      console.error("Error details:", error);
+      setResponse(`설명 오류: ${error.message}`);
+    }
+  };
+
+  const getCodeSuggestion = async () => {
+    if (!code.trim()) {
+      setResponse("코드를 입력해주세요.");
+      return;
+    }
+    try {
+      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          code: code.trim(),
+          question: "",
+          type: "optimize",
+        }),
+      });
+
+      if (!result.ok) {
+        throw new Error(`HTTP error! status: ${result.status}`);
+      }
+
+      const data = await result.json();
+      setResponse("코드 최적화 제안:\n\n" + data.answer);
+    } catch (error) {
+      console.error("Error details:", error);
+      setResponse(`코드 제안 오류: ${error.message}`);
     }
   };
 
@@ -151,12 +187,13 @@ const AiSupport = () => {
       <StyledInput
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        placeholder="코드에 대해 질문하기"
+        placeholder="질문을 입력하세요..."
       />
 
       <ButtonGroup>
-        <Button onClick={suggestCode}>코드 제안</Button>
         <Button onClick={askCopilot}>Ask Copilot</Button>
+        <Button onClick={getDetailedExplanation}>설명 추가</Button>
+        <Button onClick={getCodeSuggestion}>코드 제안</Button>
       </ButtonGroup>
 
       <OutputArea>{response}</OutputArea>

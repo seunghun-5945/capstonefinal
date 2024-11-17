@@ -5,8 +5,6 @@ const Container = styled.div`
   width: 40%;
   height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-around;
   flex-direction: column;
   position: absolute;
   bottom: 0;
@@ -14,37 +12,66 @@ const Container = styled.div`
   background-color: white;
   z-index: 30;
   padding: 20px;
+  resize: horizontal;
+  overflow: auto;
+  min-width: 300px;
+  max-width: 80%;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: #f0f0f0;
+    cursor: ew-resize;
+  }
 `;
 
-const OutputArea = styled.div`
-  width: 80%;
-  height: 40%;
-  border: 1px solid black;
+const ChatContainer = styled.div`
+  flex: 1;
   overflow-y: auto;
   padding: 10px;
-  white-space: pre-wrap;
-  font-family: monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 `;
 
-const CodeEditor = styled.textarea`
-  width: 80%;
-  height: 150px;
-  margin: 10px 0;
+const Message = styled.div`
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 15px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  position: relative;
+
+  ${(props) =>
+    props.isUser
+      ? `
+    align-self: flex-end;
+    background-color: #0066cc;
+    color: white;
+  `
+      : `
+    align-self: flex-start;
+    background-color: #f0f0f0;
+    color: black;
+  `}
+`;
+
+const InputContainer = styled.div`
+  display: flex;
+  gap: 10px;
   padding: 10px;
-  font-family: monospace;
 `;
 
 const StyledInput = styled.input`
-  width: 80%;
+  flex: 1;
   height: 40px;
   border-radius: 20px;
   padding: 0 15px;
-  margin: 10px 0;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 10px;
+  border: 1px solid #ccc;
 `;
 
 const Button = styled.button`
@@ -60,32 +87,64 @@ const Button = styled.button`
   }
 `;
 
-const InputValuesArea = styled.div`
-  width: 80%;
+const CodeActionButtons = styled.div`
   display: flex;
-  flex-direction: column;
   gap: 10px;
-  margin: 10px 0;
+  margin-top: 10px;
 `;
 
-const InputValueField = styled.input`
-  width: 100%;
-  height: 30px;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+const ActionButton = styled.button`
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+  font-size: 12px;
+
+  &.apply {
+    background-color: #4caf50;
+    color: white;
+
+    &:hover {
+      background-color: #45a049;
+    }
+  }
+
+  &.reject {
+    background-color: #f44336;
+    color: white;
+
+    &:hover {
+      background-color: #da190b;
+    }
+  }
 `;
 
-const AiSupport = () => {
-  const [code, setCode] = useState("");
+const AiSupport = ({ onCodeApply }) => {
   const [question, setQuestion] = useState("");
-  const [response, setResponse] = useState("");
+  const [messages, setMessages] = useState([]);
+
+  const extractCodeFromMessage = (messageText) => {
+    const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
+    const match = messageText.match(codeBlockRegex);
+    return match ? match[1].trim() : null;
+  };
+
+  const handleCodeApplication = (messageText, isApplying) => {
+    if (isApplying) {
+      const code = extractCodeFromMessage(messageText);
+      if (code && onCodeApply) {
+        onCodeApply(code);
+      }
+    }
+  };
 
   const askCopilot = async () => {
-    if (!question.trim()) {
-      setResponse("질문을 입력해주세요.");
-      return;
-    }
+    if (!question.trim()) return;
+
+    const newQuestion = question.trim();
+    setMessages((prev) => [...prev, { text: newQuestion, isUser: true }]);
+    setQuestion("");
+
     try {
       const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
         method: "POST",
@@ -94,8 +153,8 @@ const AiSupport = () => {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          code: code.trim(),
-          question: question.trim(),
+          code: "",
+          question: newQuestion,
           type: "simple",
         }),
       });
@@ -105,98 +164,74 @@ const AiSupport = () => {
       }
 
       const data = await result.json();
-      setResponse(`질문: ${question}\n\n답변:\n${data.answer}`);
+      setMessages((prev) => [...prev, { text: data.answer, isUser: false }]);
     } catch (error) {
-      console.error("Error details:", error);
-      setResponse(`오류: ${error.message}`);
+      setMessages((prev) => [
+        ...prev,
+        { text: `오류: ${error.message}`, isUser: false },
+      ]);
     }
   };
 
-  const getDetailedExplanation = async () => {
-    if (!code.trim()) {
-      setResponse("코드를 입력해주세요.");
-      return;
-    }
-    try {
-      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          code: code.trim(),
-          question: "",
-          type: "detailed",
-        }),
-      });
-
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
-      }
-
-      const data = await result.json();
-      setResponse(data.answer);
-    } catch (error) {
-      console.error("Error details:", error);
-      setResponse(`설명 오류: ${error.message}`);
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      askCopilot();
     }
   };
 
-  const getCodeSuggestion = async () => {
-    if (!code.trim()) {
-      setResponse("코드를 입력해주세요.");
-      return;
-    }
-    try {
-      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          code: code.trim(),
-          question: "",
-          type: "optimize",
-        }),
-      });
+  const handleRefresh = () => {
+    setMessages([]);
+    setQuestion("");
+  };
 
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
-      }
+  const MessageComponent = ({ message, index }) => {
+    const isOptimizedCode = !message.isUser && message.text.includes("```");
 
-      const data = await result.json();
-      setResponse("코드 최적화 제안:\n\n" + data.answer);
-    } catch (error) {
-      console.error("Error details:", error);
-      setResponse(`코드 제안 오류: ${error.message}`);
-    }
+    return (
+      <Message key={index} isUser={message.isUser}>
+        {message.text}
+        {isOptimizedCode && (
+          <CodeActionButtons>
+            <ActionButton
+              className="apply"
+              onClick={() => handleCodeApplication(message.text, true)}
+            >
+              코드 적용하기
+            </ActionButton>
+            <ActionButton
+              className="reject"
+              onClick={() => handleCodeApplication(message.text, false)}
+            >
+              거절하기
+            </ActionButton>
+          </CodeActionButtons>
+        )}
+      </Message>
+    );
   };
 
   return (
     <Container>
       <h1>AI 응답</h1>
+      <Button onClick={handleRefresh} style={{ alignSelf: "flex-end" }}>
+        새로고침
+      </Button>
 
-      <CodeEditor
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="코드를 입력하세요..."
-      />
+      <ChatContainer>
+        {messages.map((message, index) => (
+          <MessageComponent key={index} message={message} index={index} />
+        ))}
+      </ChatContainer>
 
-      <StyledInput
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        placeholder="질문을 입력하세요..."
-      />
-
-      <ButtonGroup>
-        <Button onClick={askCopilot}>Ask Copilot</Button>
-        <Button onClick={getDetailedExplanation}>설명 추가</Button>
-        <Button onClick={getCodeSuggestion}>코드 제안</Button>
-      </ButtonGroup>
-
-      <OutputArea>{response}</OutputArea>
+      <InputContainer>
+        <StyledInput
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="질문을 입력하세요..."
+        />
+        <Button onClick={askCopilot}>전송</Button>
+      </InputContainer>
     </Container>
   );
 };

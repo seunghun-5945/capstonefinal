@@ -82,8 +82,8 @@ const AiSupport = () => {
   const [response, setResponse] = useState("");
 
   const askCopilot = async () => {
-    if (!code.trim() || !question.trim()) {
-      setResponse("코드와 질문을 모두 입력해주세요.");
+    if (!question.trim()) {
+      setResponse("질문을 입력해주세요.");
       return;
     }
     try {
@@ -94,8 +94,8 @@ const AiSupport = () => {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          code,
-          question,
+          code: code.trim(),
+          question: question.trim(),
           type: "simple",
         }),
       });

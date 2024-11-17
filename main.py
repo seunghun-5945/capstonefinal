@@ -133,20 +133,17 @@ async def process_gpt4o_mini(request: GPTRequest):
     try:
         if not openai.api_key:
             return {"answer": "OpenAI API 키가 설정되지 않았습니다."}
-            
-        if not request.code:
-            return {"answer": "코드를 입력해주세요."}
 
-        # simple 타입일 때만 질문 필수, optimize와 detailed는 질문 불필요
         if request.type == "simple":
             if not request.question:
-                return {"answer": "코드와 질문을 모두 입력해주세요."}
-
-        try:
-            client = openai.OpenAI()
+                return {"answer": "질문을 입력해주세요."}
             
-            if request.type == "simple":
-                prompt = f"""
+            try:
+                client = openai.OpenAI()
+                
+                # 코드가 있는 경우와 없는 경우를 구분
+                if request.code.strip():
+                    prompt = f"""
 다음 코드에 대한 질문에 답변해주세요:
 
 코드:
@@ -155,7 +152,43 @@ async def process_gpt4o_mini(request: GPTRequest):
 질문:
 {request.question}
 """
-            elif request.type == "optimize":
+                else:
+                    prompt = f"""
+당신은 프로그래밍, 소프트웨어 개발, 컴퓨터 과학, 인공지능에 대한 전문가입니다.
+다음 질문에 대해 명확하고 전문적으로 답변해주세요.
+
+만약 질문이 인사말이나 간단한 대화라면 친근하게 응답해주세요.
+하지만 프로그래밍, 코드, 소프트웨어 개발, 컴퓨터 과학, 인공지능과 전혀 관련이 없는 전문적인 질문에는
+"죄송하지만 프로그래밍, 코드, IT 기술과 관련된 질문에만 답변할 수 있습니다."라고 답변해주세요.
+
+질문:
+{request.question}
+"""
+
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "당신은 프로그래밍과 IT 기술 분야의 전문가이면서도 친근한 AI 어시스턴트입니다."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=1000
+                )
+                
+                answer = response.choices[0].message.content
+                return {"answer": answer}
+                
+            except Exception as e:
+                return {"answer": f"OpenAI API 오류: {str(e)}"}
+                
+        # optimize와 detailed 타입은 코드가 필수
+        if not request.code:
+            return {"answer": "코드를 입력해주세요."}
+
+        try:
+            client = openai.OpenAI()
+            
+            if request.type == "optimize":
                 prompt = f"""
 다음 코드를 분석하고 최적화가 필요한 부분을 찾아 개선된 코드를 제안해주세요:
 

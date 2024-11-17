@@ -154,8 +154,22 @@ async def process_gpt4o_mini(request: GPTRequest):
 """
                 else:
                     prompt = f"""
-당신은 프로그래밍, 소프트웨어 개발, 컴퓨터 과학, 인공지능에 대한 전문가입니다.
-다음 질문에 대해 명확하고 전문적으로 답변해주세요.
+당신은 프로그래밍, 소프트웨어 개발, 컴퓨터 과학, 인공지능, IT 기술에 대한 전문가입니다.
+다음 규칙을 엄격하게 따라주세요:
+
+1. 다음 주제들에 대해서만 답변하세요:
+   - 프로그래밍 언어 및 코딩
+   - 소프트웨어 개발
+   - 컴퓨터 과학
+   - 인공지능/머신러닝
+   - IT 기술 및 인프라
+   - 웹/앱 개발
+   - 데이터베이스
+   - 네트워크
+   - 보안
+   - 클라우드 컴퓨팅
+
+2. "안녕하세요", "고마워요" 같은 일반적인 인사말에는 친근하게 응답하세요.
 
 만약 질문이 인사말이나 간단한 대화라면 친근하게 응답해주세요.
 하지만 프로그래밍, 코드, 소프트웨어 개발, 컴퓨터 과학, 인공지능과 전혀 관련이 없는 전문적인 질문에는
@@ -168,7 +182,10 @@ async def process_gpt4o_mini(request: GPTRequest):
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "당신은 프로그래밍과 IT 기술 분야의 전문가이면서도 친근한 AI 어시스턴트입니다."},
+                        {
+                            "role": "system", 
+                            "content": "당신은 프로그래밍과 IT 기술 분야의 전문가입니다. 다른 분야의 질문에는 절대 답변하지 마세요."
+                        },
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.7,
@@ -190,18 +207,11 @@ async def process_gpt4o_mini(request: GPTRequest):
             
             if request.type == "optimize":
                 prompt = f"""
-다음 코드를 분석하고 최적화가 필요한 부분을 찾아 개선된 코드를 제안해주세요:
+다음 코드를 분석하고 최적화된 버전을 제안해주세요.
+최적화된 코드와 핵심적인 변경사항만 간단히 설명해주세요.
 
 현재 코드:
 {request.code}
-
-다음 사항들을 고려해서 답변해주세요:
-1. 성능 개선 가능성
-2. 코드 가독성 향상
-3. 최신 문법 활용
-4. 잠재적인 버그 예방
-
-개선된 코드와 함께 변경 사항에 대한 설명도 포함해주세요.
 """
             else:  # detailed
                 prompt = f"""
@@ -210,10 +220,13 @@ async def process_gpt4o_mini(request: GPTRequest):
 {request.code}
 
 다음 항목들을 포함해서 설명해주세요:
-1. 코드의 전반적인 목적
-2. 주요 기능들의 상세 설명
-3. 사용된 주요 기술이나 패턴
-4. 코드의 장단점
+1. 코드의 전반적인 목적과 주요 기능
+2. 최적화된 부분들의 상세 설명
+3. 성능 개선 포인트
+4. 코드 가독성 향상 부분
+5. 잠재적인 버그 예방 요소
+6. 사용된 최신 문법이나 패턴
+7. 추가 개선 가능성
 """
 
             response = client.chat.completions.create(

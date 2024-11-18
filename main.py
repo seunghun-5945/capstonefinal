@@ -43,11 +43,16 @@ class FileCreate(BaseModel):
     branch: str
     commit_message: str  # 새로 추가된 필드
 
+class CodeComparison(BaseModel):
+    original_code: str
+    new_code: str
+
 class GPTRequest(BaseModel):
     code: str
+    current_code: str = ""  # 현재 에디터의 코드
     question: str = ""
     type: str = "simple"
-    chat_history: list = []  # 채팅 히스토리 추가
+    chat_history: list = []
 
 def get_github_client(token: str):
     return Github(token)
@@ -123,6 +128,50 @@ async def create_file(file_create: FileCreate):
     except GithubException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.post("/api/analyze-code-changes")
+async def analyze_code_changes(comparison: CodeComparison):
+    try:
+        # 원본 코드와 새 코드를 라인 단위로 분리
+        original_lines = comparison.original_code.splitlines()
+        new_lines = comparison.new_code.splitlines()
+        
+        # 변경사항 분석
+        changes = {
+            "additions": [],
+            "deletions": [],
+            "modifications": []
+        }
+        
+        # 간단한 diff 알고리즘 구현
+        from difflib import SequenceMatcher
+        matcher = SequenceMatcher(None, original_lines, new_lines)
+        
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag == 'insert':
+                changes["additions"].extend({
+                    "line": j,
+                    "content": new_lines[j]
+                } for j in range(j1, j2))
+            elif tag == 'delete':
+                changes["deletions"].extend({
+                    "line": i,
+                    "content": original_lines[i]
+                } for i in range(i1, i2))
+            elif tag == 'replace':
+                changes["modifications"].extend({
+                    "original_line": i,
+                    "new_line": j,
+                    "original_content": original_lines[i],
+                    "new_content": new_lines[j]
+                } for i, j in zip(range(i1, i2), range(j1, j2)))
+        
+        return {
+            "status": "success",
+            "changes": changes
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # OpenAI API 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")
 print(f"OpenAI API 키 설정됨: {'Yes' if openai.api_key else 'No'}")
@@ -187,10 +236,18 @@ async def process_gpt4o_mini(request: GPTRequest):
             if request.type == "optimize":
                 prompt = f"""
 다음 코드를 분석하고 최적화된 버전을 제안해주세요.
-최적화된 코드와 핵심적인 변경사항만 간단히 설명해주세요.
+현재 코드와의 호환성을 고려하여 변경사항을 제안해주세요.
 
 현재 코드:
+{request.current_code}
+
+최적화할 코드:
 {request.code}
+
+다음 형식으로 응답해주세요:
+1. 변경사항 요약
+2. 최적화된 코드 (```로 감싸서)
+3. 각 변경사항에 대한 설명
 """
             else:  # detailed
                 prompt = f"""

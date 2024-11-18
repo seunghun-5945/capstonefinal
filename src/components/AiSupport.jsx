@@ -201,7 +201,7 @@ const ActionButton = styled.button`
   }
 `;
 
-const AiSupport = ({ onCodeApply }) => {
+const AiSupport = ({ onCodeApply, currentCode }) => {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
   const chatContainerRef = useRef(null);
@@ -214,16 +214,76 @@ const AiSupport = ({ onCodeApply }) => {
   }, [messages]);
 
   const extractCodeFromMessage = (messageText) => {
-    const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
-    const match = messageText.match(codeBlockRegex);
-    return match ? match[1].trim() : null;
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    const matches = [...messageText.matchAll(codeBlockRegex)];
+
+    if (matches.length === 0) {
+      console.log("코드 블록을 찾을 수 없습니다.");
+      return null;
+    }
+
+    const codeBlocks = matches.map((match) => ({
+      language: match[1] || "text",
+      code: match[2].trim(),
+    }));
+
+    console.log("찾은 코드 블록들:", codeBlocks);
+
+    const editorLanguage =
+      currentCode.includes("def ") || currentCode.includes("import ")
+        ? "python"
+        : "javascript";
+    const matchingBlock = codeBlocks.find(
+      (block) =>
+        block.language.toLowerCase() === editorLanguage ||
+        (editorLanguage === "javascript" &&
+          block.language.toLowerCase() === "js") ||
+        (editorLanguage === "python" && block.language.toLowerCase() === "py")
+    );
+
+    if (matchingBlock) {
+      console.log("적용할 코드 블록:", matchingBlock);
+      return matchingBlock.code;
+    }
+
+    console.log(
+      "언어 일치하는 코드 블록이 없어 첫 번째 블록 사용:",
+      codeBlocks[0]
+    );
+    return codeBlocks[0].code;
   };
 
-  const handleCodeApplication = (messageText, isApplying) => {
+  const handleCodeApplication = async (messageText, isApplying) => {
     if (isApplying) {
       const code = extractCodeFromMessage(messageText);
+      console.log("적용할 코드:", code);
       if (code && onCodeApply) {
-        onCodeApply(code);
+        try {
+          const response = await fetch(
+            "http://localhost:8000/api/analyze-code-changes",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                original_code: currentCode,
+                new_code: code,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("코드 분석 실패");
+          }
+
+          onCodeApply(code);
+          console.log("코드 적용 완료");
+        } catch (error) {
+          console.error("코드 적용 중 오류:", error);
+        }
+      } else {
+        console.log("유효한 코드를 찾을 수 없습니다.");
       }
     }
   };
@@ -244,6 +304,7 @@ const AiSupport = ({ onCodeApply }) => {
         },
         body: JSON.stringify({
           code: "",
+          current_code: currentCode,
           question: newQuestion,
           type: "simple",
           chat_history: messages,

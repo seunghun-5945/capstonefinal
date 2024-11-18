@@ -14,7 +14,7 @@ import "ace-builds/src-noconflict/theme-monokai";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
-import { IoIosSave } from "react-icons/io"; 
+import { IoIosSave } from "react-icons/io";
 import { VscRunAll } from "react-icons/vsc";
 import { TiMediaStop } from "react-icons/ti";
 import { IoChatboxEllipsesOutline } from "react-icons/io5";
@@ -24,7 +24,7 @@ const Container = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
-`; 
+`;
 
 const MenuBar = styled.div`
   width: 100%;
@@ -36,7 +36,7 @@ const EditorFrame = styled.div`
   width: 100%;
   height: 90%;
   position: relative;
-    .ace_scrollbar::-webkit-scrollbar {
+  .ace_scrollbar::-webkit-scrollbar {
     width: 8px;
     height: 8px;
     background: transparent;
@@ -71,7 +71,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("javascript");
   const [isRunning, setIsRunning] = useState(false);
-  const [openAiSupport, setOpenAiSupport] = useState(true)
+  const [openAiSupport, setOpenAiSupport] = useState(true);
 
   // 누나 여기부분 추가해줘 1
   useEffect(() => {
@@ -181,10 +181,23 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
   };
 
   const handleopenAiSupport = () => {
-    return (
-      setOpenAiSupport(!openAiSupport)
-    )
-  }
+    return setOpenAiSupport(!openAiSupport);
+  };
+
+  const handleCodeApply = (newCode) => {
+    console.log("Editor에서 받은 새 코드:", newCode); // 디버깅용
+    if (newCode && editorRef.current) {
+      try {
+        // 에디터 상태 업데이트
+        setEditorContent(newCode);
+        // Ace Editor 내용 직접 업데이트
+        editorRef.current.editor.setValue(newCode, -1); // -1은 커서를 처음으로 이동
+        console.log("에디터 내용 업데이트 완료"); // 디버깅용
+      } catch (error) {
+        console.error("에디터 업데이트 중 오류:", error);
+      }
+    }
+  };
 
   return (
     <Container>
@@ -199,34 +212,33 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           gap: "8px",
         }}
       >
-        <IoIosSave 
+        <IoIosSave
           onClick={handleSave}
-          style={{fontSize:"35px", color:"white"}}
+          style={{ fontSize: "35px", color: "white" }}
         />
         {filePath && (
           <>
             {isRunning ? (
-              <VscRunAll 
+              <VscRunAll
                 onClick={handleRunCode}
-                style={{fontSize:"35px", color:"green", cursor:"pointer"}}
+                style={{ fontSize: "35px", color: "green", cursor: "pointer" }}
                 disabled={isRunning}
               />
-              ) : (<TiMediaStop 
+            ) : (
+              <TiMediaStop
                 onClick={handleStopCode}
-                style={{fontSize:"35px", color:"red", cursor:"pointer"}}
+                style={{ fontSize: "35px", color: "red", cursor: "pointer" }}
                 disabled={isRunning}
               />
             )}
           </>
         )}
-        {filePath && (
-          <span style={{color:"white"}}>{filePath}</span>
-        )}
-        <IoChatboxEllipsesOutline 
+        {filePath && <span style={{ color: "white" }}>{filePath}</span>}
+        <IoChatboxEllipsesOutline
           onClick={handleopenAiSupport}
-          style={{fontSize:"35px", color:"gray", cursor:"pointer"}}
+          style={{ fontSize: "35px", color: "gray", cursor: "pointer" }}
         />
-        <span style={{color:"white"}}>AI Support</span>
+        <span style={{ color: "white" }}>AI Support</span>
       </MenuBar>
       <EditorFrame>
         <AceEditor
@@ -252,13 +264,14 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           }}
           style={{
             // background:"linear-gradient(to right, black ,gray"
-            backgroundColor:"black"
+            backgroundColor: "black",
           }}
         />
         {openAiSupport && (
-          <AiSupport>
-              asdads
-          </AiSupport>
+          <AiSupport
+            onCodeApply={handleCodeApply}
+            currentCode={editorContent}
+          />
         )}
       </EditorFrame>
     </Container>

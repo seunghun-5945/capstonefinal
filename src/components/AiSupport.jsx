@@ -45,6 +45,23 @@ const Message = styled.div`
   word-wrap: break-word;
   white-space: pre-wrap;
   position: relative;
+  overflow-x: hidden;
+
+  pre {
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  code {
+    font-family: "Consolas", monospace;
+    background-color: #f5f5f5;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
 
   ${(props) =>
     props.isUser
@@ -64,14 +81,37 @@ const InputContainer = styled.div`
   display: flex;
   gap: 10px;
   padding: 10px;
+  align-items: flex-start;
 `;
 
-const StyledInput = styled.input`
+const StyledInput = styled.textarea`
   flex: 1;
-  height: 40px;
-  border-radius: 20px;
-  padding: 0 15px;
+  min-height: 40px;
+  max-height: 200px;
+  border-radius: 0px;
+  padding: 10px 15px;
   border: 1px solid #ccc;
+  resize: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  line-height: 1.5;
+  font-family: inherit;
+  word-wrap: break-word;
+  height: ${(props) => {
+    const lineHeight = 24;
+    const lines = props.value.split("\n").length;
+    const calculatedHeight = Math.min(lines * lineHeight + 20, 200);
+    return Math.max(40, calculatedHeight) + "px";
+  }};
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 4px;
+  }
 `;
 
 const Button = styled.button`
@@ -81,6 +121,8 @@ const Button = styled.button`
   background-color: #0066cc;
   color: white;
   border: none;
+  position: sticky;
+  top: 0;
 
   &:hover {
     background-color: #0052a3;
@@ -174,7 +216,8 @@ const AiSupport = ({ onCodeApply }) => {
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
       askCopilot();
     }
   };

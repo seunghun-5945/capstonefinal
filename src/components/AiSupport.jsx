@@ -36,6 +36,15 @@ const ChatContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 4px;
+  }
 `;
 
 const Message = styled.div`
@@ -45,13 +54,11 @@ const Message = styled.div`
   word-wrap: break-word;
   white-space: pre-wrap;
   position: relative;
-  overflow-x: hidden;
 
   pre {
     background-color: #f5f5f5;
     padding: 10px;
     border-radius: 5px;
-    overflow-x: hidden;
     white-space: pre-wrap;
     word-break: break-all;
   }

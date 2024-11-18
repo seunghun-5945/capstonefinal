@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
 const Container = styled.div`
@@ -171,6 +171,14 @@ const ActionButton = styled.button`
 const AiSupport = ({ onCodeApply }) => {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
+  const chatContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const extractCodeFromMessage = (messageText) => {
     const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
@@ -268,7 +276,7 @@ const AiSupport = ({ onCodeApply }) => {
         새로고침
       </Button>
 
-      <ChatContainer>
+      <ChatContainer ref={chatContainerRef}>
         {messages.map((message, index) => (
           <MessageComponent key={index} message={message} index={index} />
         ))}

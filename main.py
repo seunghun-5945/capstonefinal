@@ -45,8 +45,9 @@ class FileCreate(BaseModel):
 
 class GPTRequest(BaseModel):
     code: str
-    question: str = ""  # 질문 필드 추가
+    question: str = ""
     type: str = "simple"
+    chat_history: list = []  # 채팅 히스토리 추가
 
 def get_github_client(token: str):
     return Github(token)
@@ -134,16 +135,23 @@ async def process_gpt4o_mini(request: GPTRequest):
         if not openai.api_key:
             return {"answer": "OpenAI API 키가 설정되지 않았습니다."}
 
+        client = openai.OpenAI()
+        messages = [
+            {
+                "role": "system",
+                "content": "당신은 프로그래밍과 IT 기술 분야의 전문가입니다. 다른 분야의 질문에는 절대 답변하지 마세요."
+            }
+        ]
+
+        # 이전 대화 내용을 messages에 추가
+        for chat in request.chat_history:
+            role = "assistant" if not chat.get("isUser") else "user"
+            messages.append({"role": role, "content": chat.get("text", "")})
+
+        # 현재 질문 추가
         if request.type == "simple":
-            if not request.question:
-                return {"answer": "질문을 입력해주세요."}
-            
-            try:
-                client = openai.OpenAI()
-                
-                # 코드가 있는 경우와 없는 경우를 구분
-                if request.code.strip():
-                    prompt = f"""
+            if request.code.strip():
+                current_prompt = f"""
 다음 코드에 대한 질문에 답변해주세요:
 
 코드:
@@ -152,42 +160,15 @@ async def process_gpt4o_mini(request: GPTRequest):
 질문:
 {request.question}
 """
-                else:
-                    prompt = f"""
-당신은 프로그래밍, 소프트웨어 개발, 컴퓨터 과학, 인공지능, IT 기술에 대한 전문가입니다.
-다음 규칙을 엄격하게 따라주세요:
+            else:
+                current_prompt = request.question
 
-1. 다음 주제들에 대해서만 답변하세요:
-   - 프로그래밍 언어 및 코딩
-   - 소프트웨어 개발
-   - 컴퓨터 과학
-   - 인공지능/머신러닝
-   - IT 기술 및 인프라
-   - 웹/앱 개발
-   - 데이터베이스
-   - 네트워크
-   - 보안
-   - 클라우드 컴퓨팅
+            messages.append({"role": "user", "content": current_prompt})
 
-2. "안녕하세요", "고마워요" 같은 일반적인 인사말에는 친근하게 응답하세요.
-
-만약 질문이 인사말이나 간단한 대화라면 친근하게 응답해주세요.
-하지만 프로그래밍, 코드, 소프트웨어 개발, 컴퓨터 과학, 인공지능과 전혀 관련이 없는 전문적인 질문에는
-"죄송하지만 프로그래밍, 코드, IT 기술과 관련된 질문에만 답변할 수 있습니다."라고 답변해주세요.
-
-질문:
-{request.question}
-"""
-
+            try:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "system", 
-                            "content": "당신은 프로그래밍과 IT 기술 분야의 전문가입니다. 다른 분야의 질문에는 절대 답변하지 마세요."
-                        },
-                        {"role": "user", "content": prompt}
-                    ],
+                    messages=messages,
                     temperature=0.7,
                     max_tokens=1000
                 )
@@ -197,14 +178,12 @@ async def process_gpt4o_mini(request: GPTRequest):
                 
             except Exception as e:
                 return {"answer": f"OpenAI API 오류: {str(e)}"}
-                
+
         # optimize와 detailed 타입은 코드가 필수
         if not request.code:
             return {"answer": "코드를 입력해주세요."}
 
         try:
-            client = openai.OpenAI()
-            
             if request.type == "optimize":
                 prompt = f"""
 다음 코드를 분석하고 최적화된 버전을 제안해주세요.

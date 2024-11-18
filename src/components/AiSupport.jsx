@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 
 const Container = styled.div`
@@ -169,8 +169,8 @@ const ActionButton = styled.button`
 `;
 
 const AiSupport = ({ onCodeApply }) => {
-  const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
+  const [question, setQuestion] = useState("");
 
   const extractCodeFromMessage = (messageText) => {
     const codeBlockRegex = /```(?:\w+)?\n([\s\S]*?)```/;
@@ -205,6 +205,7 @@ const AiSupport = ({ onCodeApply }) => {
           code: "",
           question: newQuestion,
           type: "simple",
+          chat_history: messages,
         }),
       });
 

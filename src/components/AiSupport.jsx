@@ -9,13 +9,15 @@ const Container = styled.div`
   position: absolute;
   bottom: 0;
   right: 0;
-  background-color: white;
+  background-color: #ffffff;
   z-index: 30;
   padding: 20px;
   resize: horizontal;
   overflow: auto;
   min-width: 300px;
   max-width: 80%;
+  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+  border-left: 1px solid #e0e0e0;
 
   &::before {
     content: "";
@@ -32,139 +34,170 @@ const Container = styled.div`
 const ChatContainer = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  background-color: #f5f5f7;
+  border-radius: 12px;
+  margin: 10px 0;
 
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: #888;
-    border-radius: 4px;
+    background-color: #d1d1d6;
+    border-radius: 3px;
   }
 `;
 
 const Message = styled.div`
   max-width: 70%;
-  padding: 10px 15px;
-  border-radius: 15px;
+  padding: 12px 16px;
+  border-radius: 20px;
   word-wrap: break-word;
   white-space: pre-wrap;
   position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  font-size: 0.95rem;
 
   pre {
-    background-color: #f5f5f5;
-    padding: 10px;
-    border-radius: 5px;
+    background-color: #ffffff;
+    padding: 12px;
+    border-radius: 8px;
     white-space: pre-wrap;
     word-break: break-all;
+    border: 1px solid #e0e0e0;
+    margin: 8px 0;
   }
 
   code {
-    font-family: "Consolas", monospace;
-    background-color: #f5f5f5;
-    padding: 2px 4px;
-    border-radius: 3px;
+    font-family: "SF Mono", Consolas, monospace;
+    background-color: #f5f5f7;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
   }
 
   ${(props) =>
     props.isUser
       ? `
     align-self: flex-end;
-    background-color: #0066cc;
+    background-color: #007AFF;
     color: white;
+    margin-left: 30%;
   `
       : `
     align-self: flex-start;
-    background-color: #f0f0f0;
-    color: black;
+    background-color: #ffffff;
+    color: #1d1d1f;
+    margin-right: 30%;
+    border: 1px solid #e0e0e0;
   `}
 `;
 
 const InputContainer = styled.div`
   display: flex;
-  gap: 10px;
+  gap: 12px;
   padding: 10px;
   align-items: flex-start;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
 `;
 
 const StyledInput = styled.textarea`
   flex: 1;
   min-height: 40px;
   max-height: 200px;
-  border-radius: 0px;
-  padding: 10px 15px;
-  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 12px 16px;
+  border: none;
   resize: none;
   overflow-y: auto;
   overflow-x: hidden;
   line-height: 1.5;
-  font-family: inherit;
-  word-wrap: break-word;
-  height: ${(props) => {
-    const lineHeight = 24;
-    const lines = props.value.split("\n").length;
-    const calculatedHeight = Math.min(lines * lineHeight + 20, 200);
-    return Math.max(40, calculatedHeight) + "px";
-  }};
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.95rem;
+  background-color: #f5f5f7;
+  color: #1d1d1f;
+
+  &::placeholder {
+    color: #86868b;
+  }
+
+  &:focus {
+    outline: none;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 2px #007aff40;
+  }
 
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: #888;
-    border-radius: 4px;
+    background-color: #d1d1d6;
+    border-radius: 3px;
   }
 `;
 
 const Button = styled.button`
-  padding: 8px 16px;
-  border-radius: 5px;
+  padding: 10px 18px;
+  border-radius: 8px;
   cursor: pointer;
-  background-color: #0066cc;
+  background-color: #007aff;
   color: white;
   border: none;
-  position: sticky;
-  top: 0;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
 
   &:hover {
-    background-color: #0052a3;
+    background-color: #0066d9;
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 `;
 
 const CodeActionButtons = styled.div`
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 12px;
 `;
 
 const ActionButton = styled.button`
-  padding: 5px 10px;
-  border-radius: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
   cursor: pointer;
   border: none;
-  font-size: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
 
   &.apply {
-    background-color: #4caf50;
+    background-color: #34c759;
     color: white;
 
     &:hover {
-      background-color: #45a049;
+      background-color: #2db14d;
     }
   }
 
   &.reject {
-    background-color: #f44336;
+    background-color: #ff3b30;
     color: white;
 
     &:hover {
-      background-color: #da190b;
+      background-color: #e0352b;
     }
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 `;
 

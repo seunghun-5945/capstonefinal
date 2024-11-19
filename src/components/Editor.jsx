@@ -1,67 +1,96 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import AceEditor from "react-ace";
-import { MdOutlineEdit } from "react-icons/md";
-import { VscRunAll } from "react-icons/vsc";
-import { IoTerminal } from "react-icons/io5";
-import { PiTrashDuotone } from "react-icons/pi";
-import Terminal from "react-console-emulator";
+import AiSupport from "./AiSupport";
 
+// Ace Editor 테마와 언어 모드 import
+import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/mode-python";
+import "ace-builds/src-noconflict/mode-html";
+import "ace-builds/src-noconflict/mode-css";
+import "ace-builds/src-noconflict/mode-json";
+import "ace-builds/src-noconflict/mode-markdown";
 import "ace-builds/src-noconflict/theme-monokai";
+import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
-import ace from "ace-builds";
-import "ace-builds/src-noconflict/ext-language_tools";
+import { IoIosSave } from "react-icons/io";
+import { VscRunAll } from "react-icons/vsc";
+import { TiMediaStop } from "react-icons/ti";
+import { IoChatboxEllipsesOutline } from "react-icons/io5";
 
 const Container = styled.div`
-  width: 37.5%;
+  width: 100%;
   height: 100%;
-  background-color: white;
-  border-radius: 10px;
   display: flex;
   flex-direction: column;
 `;
 
-const Header = styled.div`
+const MenuBar = styled.div`
   width: 100%;
-  height: 15%;
-  display: flex;
-  justify-content: space-between;
-  padding: 2%;
-  background-color: #f5f5f5;
-  border-radius: 10px 10px 0 0;
+  height: 10%;
+  background-color: black;
 `;
 
-const HeaderLeft = styled.div`
-  width: 50%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-size: 45px;
-  font-weight: bold;
-`;
-
-const HeaderRight = styled.div`
-  width: 50%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-`;
-
-const Main = styled.div`
+const EditorFrame = styled.div`
   width: 100%;
-  height: 85%;
+  height: 90%;
   position: relative;
-  background-color: #2d2d2d;
-  border-radius: 0 0 10px 10px;
+  .ace_scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background: transparent;
+  }
+
+  .ace_scrollbar::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 4px;
+
+    &:hover {
+      background: #5a5a5a;
+    }
+  }
+
+  .ace_scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ace_scrollbar-h::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .ace_scrollbar-v::-webkit-scrollbar {
+    width: 8px;
+  }
 `;
 
-const EditorWrapper = styled.div`
-  position: relative;
-  width: 100%;
-  height: ${(props) => (props.isTerminalVisible ? "70%" : "100%")};
+const DiffButtons = styled.div`
+  position: absolute;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const DiffButton = styled.button`
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+
+  &.accept {
+    background: #34c759;
+    color: white;
+  }
+
+  &.reject {
+    background: #ff3b30;
+    color: white;
+  }
 `;
 
 const SuggestionText = styled.div`
@@ -77,13 +106,6 @@ const SuggestionText = styled.div`
   z-index: 100;
 `;
 
-const TerminalWrapper = styled.div`
-  width: 100%;
-  height: 30%;
-  background-color: black;
-  border-radius: 0 0 10px 10px;
-`;
-
 const getCommonPrefixLength = (str1, str2) => {
   let i = 0;
   while (i < str1.length && i < str2.length && str1[i] === str2[i]) {
@@ -92,67 +114,97 @@ const getCommonPrefixLength = (str1, str2) => {
   return i;
 };
 
-const EditorArea = () => {
-  const [code, setCode] = useState("");
-  const [suggestion, setSuggestion] = useState("");
-  const [isTerminalVisible, setIsTerminalVisible] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState({ row: 0, column: 0 });
+const Editor = ({ filePath, terminalRef, initialContent }) => {
   const editorRef = useRef(null);
+  const [editorContent, setEditorContent] = useState("");
+  const [editorLanguage, setEditorLanguage] = useState("javascript");
+  const [isRunning, setIsRunning] = useState(false);
+  const [openAiSupport, setOpenAiSupport] = useState(true);
+  const [codeMarkers, setCodeMarkers] = useState([]);
   const socketRef = useRef(null);
   const debounceTimerRef = useRef(null);
-  const [line, setLine] = useState(""); // 현재 라인
-  const [position, setPosition] = useState(""); // 커서 위치
-  
-useEffect(() => {
-  console.log("웹소켓 연결 시도...");
-  
-  // WebSocket 연결 생성
-  socketRef.current = new WebSocket("ws://localhost:8000/socket/ws");
+  const [suggestion, setSuggestion] = useState("");
+  const [cursorPosition, setCursorPosition] = useState({ row: 0, column: 0 });
 
-  // 연결 성공 시
-  socketRef.current.onopen = () => {
-    console.log("웹소켓 연결 성공!");
-  };
-
-// 메시지 수신 시
-socketRef.current.onmessage = (event) => {
-  try {
-    // 서버에서 오는 데이터가 이미 문자열인 경우
-    const suggestionText = event.data;
-    console.log("코드 제안 받음:", suggestionText);
-    setSuggestion(suggestionText);
-  } catch (error) {
-    console.error("메시지 파싱 에러:", error);
-  }
-};
-
-  // 에러 발생 시
-  socketRef.current.onerror = (error) => {
-    console.error("웹소켓 에러:", error);
-  };
-
-  // 연결 종료 시
-  socketRef.current.onclose = () => {
-    console.log("웹소켓 연결 종료");
-  };
-
-  // 컴포넌트 언마운트 시 정리
-  return () => {
-    if (socketRef.current) {
-      socketRef.current.close();
+  useEffect(() => {
+    if (initialContent) {
+      setEditorContent(initialContent);
     }
+  }, [initialContent]);
+
+  useEffect(() => {
+    if (filePath) {
+      loadFileContent(filePath);
+    }
+  }, [filePath]);
+
+  // WebSocket 연결 설정
+  useEffect(() => {
+    console.log("웹소켓 연결 시도...");
+
+    socketRef.current = new WebSocket("ws://localhost:8000/socket/ws");
+
+    socketRef.current.onopen = () => {
+      console.log("웹소켓 연결 성공!");
+    };
+
+    socketRef.current.onmessage = (event) => {
+      try {
+        const suggestionText = event.data;
+        console.log("코드 제안 받음:", suggestionText);
+        setSuggestion(suggestionText);
+      } catch (error) {
+        console.error("메시지 파싱 에러:", error);
+      }
+    };
+
+    socketRef.current.onerror = (error) => {
+      console.error("웹소켓 에러:", error);
+    };
+
+    socketRef.current.onclose = () => {
+      console.log("웹소켓 연결 종료");
+    };
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // 메시지 전송 함수
+  const sendMessage = (message) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(message));
+    }
+  };
+
+  const handleCodeChange = (newContent) => {
+    setEditorContent(newContent);
+
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-  };
-}, []);
 
-// 메시지 전송 함수 예시
-const sendMessage = (message) => {
-  if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-    socketRef.current.send(JSON.stringify(message));
-  }
-};
+    debounceTimerRef.current = setTimeout(() => {
+      if (editorRef.current) {
+        const editor = editorRef.current.editor;
+        const position = editor.getCursorPosition();
+        const session = editor.getSession();
+        const currentLine = session.getLine(position.row);
+
+        sendMessage({
+          code: newContent,
+          line: currentLine,
+          position: position,
+        });
+      }
+    }, 500);
+  };
 
   useEffect(() => {
     if (editorRef.current && suggestion) {
@@ -199,28 +251,6 @@ const sendMessage = (message) => {
     }
   }, [suggestion]);
 
-  const handleCodeChange = (newCode) => {
-    setCode(newCode);
-  
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-  
-    debounceTimerRef.current = setTimeout(() => {
-      const editor = editorRef.current.editor;
-      const position = editor.getCursorPosition();
-      const session = editor.getSession();
-      const currentLine = session.getLine(position.row);
-  
-      // WebSocket으로 메시지 전송
-      sendMessage({
-        code: newCode,
-        line: currentLine,
-        position: position,
-      });
-    }, 500); // 디바운스 시간을 3000ms에서 500ms로 줄임
-  };
-
   const handleKeyDown = (event) => {
     if (event.key === "Tab" && suggestion) {
       event.preventDefault();
@@ -230,7 +260,6 @@ const sendMessage = (message) => {
       const position = editor.getCursorPosition();
       const currentLine = session.getLine(position.row);
 
-      // 현재 라인과 제안된 코드의 공통 부분 찾기
       let commonPrefixLength = 0;
       while (
         commonPrefixLength < currentLine.length &&
@@ -240,181 +269,207 @@ const sendMessage = (message) => {
         commonPrefixLength++;
       }
 
-      // 중복되지 않는 부분만 삽입
       const uniqueSuggestionPart = suggestion.slice(commonPrefixLength);
-
-      // 현재 커서 위치에 중복되지 않는 부분만 삽입
       session.insert(position, uniqueSuggestionPart);
-
-      // 상태 업데이트
-      setCode(session.getValue());
+      setEditorContent(session.getValue());
       setSuggestion("");
-
-      // 포커스 유지
       editor.focus();
     }
   };
 
-  const toggleTerminal = () => {
-    setIsTerminalVisible(!isTerminalVisible);
-  };
-
-  const commands = {
-    echo: {
-      description: "Echo a passed string.",
-      usage: "echo <string>",
-      fn: (...args) => args.join(" "),
-    },
-  };
-
-  const handleCopyPaste = (e) => {
-    // 기본 복사/붙여넣기 동작 허용
-    return true;
-  };
-
-  const handleCopy = (text) => {
-    navigator.clipboard.writeText(text).catch((err) => {
-      console.error("복사 실패:", err);
-    });
-  };
-
-  const handlePaste = async (editor) => {
+  const loadFileContent = async (path) => {
     try {
-      const text = await navigator.clipboard.readText();
-      editor.insert(text);
-    } catch (err) {
-      console.error("붙여넣기 실패:", err);
+      const content = await window.electronAPI.readFile(path);
+      setEditorContent(content);
+      const language = getLanguageFromExtension(path.split(".").pop());
+      setEditorLanguage(language);
+    } catch (error) {
+      console.error("Error loading file:", error);
+    }
+  };
+
+  const getLanguageFromExtension = (extension) => {
+    const languageMap = {
+      js: "javascript",
+      py: "python",
+      html: "html",
+      css: "css",
+      json: "json",
+      md: "markdown",
+      txt: "text",
+    };
+    return languageMap[extension] || "text";
+  };
+
+  const handleSave = async () => {
+    if (filePath && editorRef.current) {
+      try {
+        const content = editorRef.current.editor.getValue();
+        await window.electronAPI.writeFile(filePath, content);
+        return true;
+      } catch (error) {
+        console.error("Error saving file:", error);
+        return false;
+      }
+    }
+    return false;
+  };
+
+  const handleRunCode = async () => {
+    if (!filePath || !terminalRef?.current?.executeCommandFromExternal) {
+      console.warn("Terminal or file not ready");
+      return;
+    }
+
+    const extension = filePath.split(".").pop().toLowerCase();
+    let command = "";
+
+    switch (extension) {
+      case "py":
+        command = `python "${filePath}"`;
+        break;
+      case "js":
+        command = `node "${filePath}"`;
+        break;
+      default:
+        console.warn("Unsupported file type");
+        return;
+    }
+
+    const saveSuccess = await handleSave();
+    if (saveSuccess) {
+      setIsRunning(true);
+      terminalRef.current.executeCommandFromExternal(command);
+    }
+  };
+
+  const handleStopCode = async () => {
+    if (!terminalRef?.current?.executeCommandFromExternal) {
+      return;
+    }
+
+    try {
+      await window.electronAPI.stopCode();
+      setIsRunning(false);
+      terminalRef.current.executeCommandFromExternal("\x03");
+    } catch (error) {
+      console.error("Error stopping code:", error);
+    }
+  };
+
+  const handleopenAiSupport = () => {
+    setOpenAiSupport(!openAiSupport);
+  };
+
+  const handleCodeApply = (newCode) => {
+    console.log("Editor에서 받은 새 코드:", newCode);
+    if (newCode && editorRef.current) {
+      try {
+        setEditorContent(newCode);
+        editorRef.current.editor.setValue(newCode, -1);
+        console.log("에디터 내용 업데이트 완료");
+      } catch (error) {
+        console.error("에디터 업데이트 중 오류:", error);
+      }
     }
   };
 
   return (
     <Container>
-      <Header>
-        <HeaderLeft>
-          <span>main.py</span>
-          <MdOutlineEdit style={{ margin: "2% 0 0 2%" }} fontSize={40} />
-        </HeaderLeft>
-        <HeaderRight>
-          <VscRunAll
-            fontSize={50}
-            color="green"
-            onClick={toggleTerminal}
-            style={{ cursor: "pointer", marginRight: "3%" }}
-          />
-          <IoTerminal
-            fontSize={50}
-            onClick={toggleTerminal}
-            style={{ cursor: "pointer", marginRight: "3%" }}
-          />
-          <PiTrashDuotone fontSize={50} />
-        </HeaderRight>
-      </Header>
-      <Main>
-        <EditorWrapper isTerminalVisible={isTerminalVisible}>
-          <AceEditor
-            ref={editorRef}
-            mode="python"
-            theme="monokai"
-            value={code}
-            onChange={handleCodeChange}
-            onCursorChange={(selection) => {
-              setCursorPosition(selection.cursor);
-            }}
-            onKeyDown={handleKeyDown}
-            onCopy={handleCopyPaste}
-            onPaste={handleCopyPaste}
-            name="editor"
+      <MenuBar
+        className="editor-toolbar"
+        style={{
+          padding: "4px 8px",
+          backgroundColor: "#1e1e1e",
+          borderBottom: "1px solid #333",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+      >
+        <IoIosSave
+          onClick={handleSave}
+          style={{ fontSize: "35px", color: "white" }}
+        />
+        {filePath && (
+          <>
+            {!isRunning ? (
+              <VscRunAll
+                onClick={handleRunCode}
+                style={{ fontSize: "35px", color: "green", cursor: "pointer" }}
+              />
+            ) : (
+              <TiMediaStop
+                onClick={handleStopCode}
+                style={{ fontSize: "35px", color: "red", cursor: "pointer" }}
+              />
+            )}
+          </>
+        )}
+        {filePath && <span style={{ color: "white" }}>{filePath}</span>}
+        <IoChatboxEllipsesOutline
+          onClick={handleopenAiSupport}
+          style={{ fontSize: "35px", color: "gray", cursor: "pointer" }}
+        />
+        <span style={{ color: "white" }}>AI Support</span>
+      </MenuBar>
+      <EditorFrame>
+        <AceEditor
+          ref={editorRef}
+          mode={editorLanguage}
+          theme="monokai"
+          name="editor"
+          value={editorContent}
+          onChange={handleCodeChange}
+          onCursorChange={(selection) => {
+            setCursorPosition(selection.cursor);
+          }}
+          onKeyDown={handleKeyDown}
+          width="100%"
+          height="100%"
+          fontSize={14}
+          showPrintMargin={true}
+          showGutter={true}
+          highlightActiveLine={true}
+          setOptions={{
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true,
+            enableSnippets: true,
+            showLineNumbers: true,
+            tabSize: 2,
+            useWorker: false,
+          }}
+          style={{
+            backgroundColor: "black",
+          }}
+          markers={codeMarkers}
+          editorProps={{
+            $blockScrolling: Infinity,
+          }}
+        />
+        {suggestion && (
+          <SuggestionText
             style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: "0 0 10px 10px",
-              whiteSpace: "nowrap",
-              overflowX: "auto",
+              top: `${cursorPosition.row * 19 + 4}px`,
+              left: `${cursorPosition.column * 8 + 50}px`,
             }}
-            fontSize={16}
-            showPrintMargin={false}
-            showGutter={true}
-            highlightActiveLine={true}
-            setOptions={{
-              enableBasicAutocompletion: true,
-              enableLiveAutocompletion: true,
-              enableSnippets: true,
-              showLineNumbers: true,
-              tabSize: 2,
-              useSoftTabs: true,
-              copyWithEmptySelection: true,
-              enableMultiselect: true,
-              wrap: false,
-              wrapEnabled: false,
-              printMargin: false,
-            }}
-            commands={[
-              {
-                name: "copy",
-                bindKey: { win: "Ctrl-C", mac: "Command-C" },
-                exec: (editor) => {
-                  const selectedText = editor.getSelectedText();
-                  if (selectedText) {
-                    handleCopy(selectedText);
-                  } else {
-                    // 선택된 텍스트가 없으면 현재 라인 복사
-                    const currentLine = editor.session.getLine(
-                      editor.getCursorPosition().row
-                    );
-                    handleCopy(currentLine);
-                  }
-                },
-              },
-              {
-                name: "paste",
-                bindKey: { win: "Ctrl-V", mac: "Command-V" },
-                exec: (editor) => handlePaste(editor),
-              },
-              {
-                name: "cut",
-                bindKey: { win: "Ctrl-X", mac: "Command-X" },
-                exec: (editor) => {
-                  const selectedText = editor.getSelectedText();
-                  if (selectedText) {
-                    handleCopy(selectedText);
-                    editor.remove(editor.getSelectionRange());
-                  }
-                },
-              },
-            ]}
-            editorProps={{
-              $blockScrolling: Infinity,
-              enableClipboard: true,
-              selectionStyle: "text",
-              behavioursEnabled: true,
-              wrapBehavioursEnabled: false,
-            }}
+          >
+            {suggestion}
+          </SuggestionText>
+        )}
+        {openAiSupport && (
+          <AiSupport
+            onCodeApply={handleCodeApply}
+            currentCode={editorContent}
           />
-          {suggestion && (
-            <SuggestionText
-              style={{
-                top: `${cursorPosition.row * 19 + 4}px`,
-                left: `${cursorPosition.column * 8 + 50}px`,
-              }}
-            >
-              {suggestion}
-            </SuggestionText>
-          )}
-        </EditorWrapper>
-        <TerminalWrapper isVisible={isTerminalVisible}>
-          <Terminal
-            commands={commands}
-            style={{
-              height: "100%",
-              overflow: "auto",
-              backgroundColor: "black",
-              borderRadius: "0 0 10px 10px",
-            }}
-          />
-        </TerminalWrapper>
-      </Main>
+        )}
+      </EditorFrame>
     </Container>
   );
 };
 
-export default EditorArea;
+Editor.defaultProps = {
+  terminalRef: { current: null },
+};
+
+export default Editor;

@@ -20,6 +20,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    overflow-x: hidden;
   `;
 
   const Header = styled.div`
@@ -455,6 +456,22 @@
       await loadDirectory(parentPath);
     };
 
+    const handleLocalFileLoad = async () => {
+      try {
+        const file = await window.electronAPI.openFile(); // Electron IPC 호출
+        if (file) {
+          const { filePath, fileContent } = file;
+          setSelectedFile(filePath);
+          setFileContent(fileContent);
+          onFileContentChange(fileContent); // 부모 컴포넌트에 파일 내용 전달
+        }
+      } catch (error) {
+        console.error("Error loading file:", error);
+        alert("Failed to load file.");
+      }
+    };
+    
+
     const getFileIcon = (fileName) => {
       const extension = fileName.split(".").pop().toLowerCase();
       switch (extension) {
@@ -474,7 +491,7 @@
     return (
       <Container>
         <Header>
-          <h3>File Explorer</h3>
+          <h3>파일 탐색기</h3>
           {error && <div>{error}</div>}
           <div>{currentPath}</div>
         </Header>
@@ -495,7 +512,9 @@
 
         </ButtonGroup>
         <ButtonGroup>
-          <button style={{width:"100%"}}>로컬 파일 불러오기</button>
+          <button 
+            onClick={handleLocalFileLoad}
+            style={{width:"100%"}}>로컬 파일 불러오기</button>
         </ButtonGroup>
 
         <FileTreeContainer>

@@ -4,17 +4,13 @@ import styled from "styled-components";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
+import { Resizable } from "re-resizable";
 
 const Container = styled.div`
   width: 100%;
-  height: 30%;
-  position: absolute;  
+  height: 100%;
   bottom: 0;        
   left: 0;
-  background-color: black;
-  border-top: 1px solid gray;
-  z-index: 10;
-  overflow: auto;
 
   .xterm {
     height: 100%;

@@ -7,6 +7,7 @@ import { FaGithub, FaUnlock } from "react-icons/fa";
 import { VscSourceControl } from "react-icons/vsc";
 import { IoTerminal } from "react-icons/io5";
 import { IoFolderOpenSharp } from "react-icons/io5";
+import { Resizable } from "re-resizable";
 
 const Container = styled.div`
   width: 100%;
@@ -27,12 +28,12 @@ const SideMenuBar = styled.div`
 `;
 
 const HierarchyArea = styled.div`
-  width: 15%;
+  width: 100%;
   height: 100vh;
 `;
 
 const Frame = styled.div`
-  width: 80%;
+  width: 100%;
   height: 100vh;
   border-left: 1px solid gray;
   position: relative;  // 추가
@@ -40,9 +41,8 @@ const Frame = styled.div`
 
 const EditorContainer = styled.div`
   width: 100%;
-  height: 100%;
+  height: ${props => props.terminalOpen ? 'calc(70vh)' : '100%'};
 `;
-
 
 const App = ({  }) => {
   const [currentFile, setCurrentFile] = useState(null);
@@ -90,12 +90,31 @@ const App = ({  }) => {
           style={{marginTop:"50px", cursor:"pointer", color:"white"}}
         />
       </SideMenuBar>
-      <HierarchyArea>
-        <FileExplorer 
-          onFileSelect={handleFileSelect}
-          onFileContentChange={handleFileContentChange} 
-        />
-      </HierarchyArea>
+      <Resizable
+        defaultSize={{
+          width: '15%',
+          height: '100%'
+        }}
+        minWidth="0%"
+        maxWidth="40%"
+        enable={{ right: true }}
+        handleStyles={{
+          right: {
+            width: '5px',
+            right: 0,
+            cursor: 'col-resize',
+            background: 'gray'
+          }
+        }}
+      >
+        <HierarchyArea>
+          <FileExplorer 
+            onFileSelect={handleFileSelect}
+            onFileContentChange={handleFileContentChange} 
+          />
+        </HierarchyArea>
+      </Resizable>
+
       <Frame>
         <EditorContainer>
           <Editor
@@ -104,13 +123,49 @@ const App = ({  }) => {
             initialContent={fileContent}
           />
         </EditorContainer>
-        {openTerminal && (
-        <Terminal
-          onRef={(ref) => {
-            terminalRef.current = ref;
+        <Resizable
+          defaultSize={{
+            width: '15%',
+            height: '100%'
           }}
-        />
-        )}
+          minWidth="0%"
+          maxWidth="40%"
+          enable={{ right: true }}
+          handleStyles={{
+            right: {
+              width: '5px',
+              right: 0,
+              cursor: 'col-resize',
+              background: 'gray'
+            }
+          }}
+        >
+        </Resizable>
+        {openTerminal && 
+                <Resizable
+                defaultSize={{
+                  width: '100%',
+                  height: '30vh'
+                }}
+                minHeight="10vh"
+                maxHeight="90vh"
+                enable={{
+                  top: true
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  zIndex: 10
+                }}
+              >
+              <Terminal
+                onRef={(ref) => {
+                  terminalRef.current = ref;
+                }}
+              />
+              </Resizable>
+        }
+
       </Frame>
     </Container>
   );

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
 const { exec, spawn } = require("child_process");
@@ -18,19 +18,29 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
+      webgl: false, // WebGL 비활성화
+      offscreen: false, // 오프스크린 렌더링 비활성화
     },
   });
 
   win.loadURL("http://localhost:5173");
+
+  // GPU 가속 비활성화
+  win.webContents.session.setPermissionCheckHandler(() => false);
+  win.webContents.session.setDevicePermissionHandler(() => false);
+
   win.webContents.openDevTools();
   mainWindow = win;
 }
+
 
 function broadcastEnvironmentChange(env) {
   BrowserWindow.getAllWindows().forEach((window) => {
     window.webContents.send("environment-changed", env);
   });
 }
+
+app.disableHardwareAcceleration();
 
 app.whenReady().then(() => {
   createWindow();
@@ -108,6 +118,30 @@ const killProcess = async () => {
 };
 
 // IPC 핸들러들
+ipcMain.handle('dialog:openFile', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'All Files', extensions: ['*'] },
+        { name: 'Text Files', extensions: ['txt', 'md', 'json', 'js', 'py', 'c'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      const filePath = result.filePaths[0];
+      // fs.promises.readFile 사용
+      const fileContent = await fs.readFile(filePath, 'utf-8');
+      return { filePath, fileContent };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error in openFile handler:', error);
+    throw error;
+  }
+});
+
+
 ipcMain.handle("get-initial-path", () => {
   return process.cwd();
 });

@@ -62,24 +62,6 @@ const Message = styled.div`
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   font-size: 0.95rem;
 
-  pre {
-    background-color: #ffffff;
-    padding: 12px;
-    border-radius: 8px;
-    white-space: pre-wrap;
-    word-break: break-all;
-    border: 1px solid #e0e0e0;
-    margin: 8px 0;
-  }
-
-  code {
-    font-family: "SF Mono", Consolas, monospace;
-    background-color: #f5f5f7;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.9em;
-  }
-
   ${(props) =>
     props.isUser
       ? `
@@ -201,6 +183,83 @@ const ActionButton = styled.button`
   }
 `;
 
+const CodeBlock = styled.div`
+  position: relative;
+  margin: 16px 0;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+`;
+
+const CodeHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #3d3d3d;
+
+  span {
+    color: #888;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 0.8rem;
+  }
+`;
+
+const CopyButton = styled.button`
+  background-color: transparent;
+  border: 1px solid #4d4d4d;
+  color: #888;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #3d3d3d;
+    color: #fff;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+`;
+
+const CodeContent = styled.pre`
+  margin: 0;
+  padding: 16px;
+  color: #d4d4d4;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  background-color: #1e1e1e;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #1e1e1e;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #4d4d4d;
+    border-radius: 3px;
+
+    &:hover {
+      background-color: #5d5d5d;
+    }
+  }
+`;
+
 const AiSupport = ({ onCodeApply, currentCode }) => {
   const [messages, setMessages] = useState([]);
   const [question, setQuestion] = useState("");
@@ -289,11 +348,28 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
     if (!question.trim()) return;
 
     const newQuestion = question.trim();
-    setMessages((prev) => [...prev, { text: newQuestion, isUser: true }]);
+    const newUserMessage = { text: newQuestion, isUser: true };
+
+    // 사용자 메시지 추가
+    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
     setQuestion("");
 
     try {
-      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
+      // 이전 대화에서 사용된 프로그래밍 언어 파악
+      const codeLanguages = messages
+        .filter((msg) => !msg.isUser && msg.text.includes("```"))
+        .map((msg) => {
+          const match = msg.text.match(/```(\w+)/);
+          return match ? match[1] : null;
+        })
+        .filter(Boolean);
+
+      const currentLanguage =
+        codeLanguages.length > 0
+          ? codeLanguages[codeLanguages.length - 1]
+          : null;
+
+      const response = await fetch("http://localhost:8000/api/gpt-4o-mini", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -304,19 +380,27 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
           current_code: currentCode,
           question: newQuestion,
           type: "simple",
-          chat_history: messages,
+          chat_history: [...messages, newUserMessage].map((msg) => ({
+            text: msg.text,
+            isUser: msg.isUser,
+            language: currentLanguage,
+          })),
+          current_language: currentLanguage,
         }),
       });
 
-      if (!result.ok) {
-        throw new Error(`HTTP error! status: ${result.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await result.json();
-      setMessages((prev) => [...prev, { text: data.answer, isUser: false }]);
+      const data = await response.json();
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { text: data.answer, isUser: false },
+      ]);
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
+      setMessages((prevMessages) => [
+        ...prevMessages,
         { text: `오류: ${error.message}`, isUser: false },
       ]);
     }
@@ -335,11 +419,63 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
   };
 
   const MessageComponent = ({ message, index }) => {
+    const [copyStatus, setCopyStatus] = useState("");
+
+    const copyToClipboard = async (code) => {
+      try {
+        await navigator.clipboard.writeText(code);
+        setCopyStatus("복사됨");
+        setTimeout(() => setCopyStatus(""), 2000);
+      } catch (err) {
+        console.error("복사 실패:", err);
+        setCopyStatus("실패");
+      }
+    };
+
+    const renderContent = (text) => {
+      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      while ((match = codeBlockRegex.exec(text)) !== null) {
+        // 코드 블록 이전의 텍스트 추가
+        if (match.index > lastIndex) {
+          parts.push(text.substring(lastIndex, match.index));
+        }
+
+        const language = match[1] || "text";
+        const code = match[2].trim();
+
+        // 코드 블록 컴포넌트 추가
+        parts.push(
+          <CodeBlock key={match.index}>
+            <CodeHeader>
+              <span>{language}</span>
+              <CopyButton onClick={() => copyToClipboard(code)}>
+                복사
+              </CopyButton>
+            </CodeHeader>
+            <CodeContent>{code}</CodeContent>
+          </CodeBlock>
+        );
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      // 남은 텍스트 추가
+      if (lastIndex < text.length) {
+        parts.push(text.substring(lastIndex));
+      }
+
+      return parts;
+    };
+
     const isOptimizedCode = !message.isUser && message.text.includes("```");
 
     return (
-      <Message key={index} isUser={message.isUser}>
-        {message.text}
+      <Message isUser={message.isUser}>
+        {renderContent(message.text)}
         {isOptimizedCode && (
           <CodeActionButtons>
             <ActionButton

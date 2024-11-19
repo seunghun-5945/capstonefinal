@@ -185,29 +185,49 @@ async def process_gpt4o_mini(request: GPTRequest):
             return {"answer": "OpenAI API 키가 설정되지 않았습니다."}
 
         client = openai.OpenAI()
+        
+        # 시스템 프롬프트 수정
+        system_content = """당신은 프로그래밍과 IT 기술 분야의 전문가입니다. 
+        다른 분야에 대한 질문은 절대 답변하지 마세요.
+        모든 프로그래밍 언어에 대한 질문에 답변할 수 있으며, 
+        사용자가 특정 언어로 코드 변환을 요청할 경우 해당 언어로 변환하여 제공해주세요.
+        이전 코드의 기능을 동일하게 유지하면서 요청한 언어로 변환해주세요."""
+
         messages = [
             {
                 "role": "system",
-                "content": "당신은 프로그래밍과 IT 기술 분야의 전문가입니다. 다른 분야의 질문에는 절대 답변하지 마세요."
+                "content": system_content
             }
         ]
 
-        # 이전 대화 내용을 messages에 추가
-        for chat in request.chat_history:
-            role = "assistant" if not chat.get("isUser") else "user"
-            messages.append({"role": role, "content": chat.get("text", "")})
+        # 이전 대화 내용에서 언어 변환 요청 확인
+        target_language = None
+        if request.question.lower().find("python") >= 0:
+            target_language = "python"
+        elif request.question.lower().find("javascript") >= 0:
+            target_language = "javascript"
+        # 필요한 다른 언어들도 추가 가능
 
-        # 현재 질문 추가
+        # 이전 대화 내용 추가
+        for chat in request.chat_history:
+            messages.append({
+                "role": "user" if chat.get("isUser") else "assistant",
+                "content": chat.get("text", "")
+            })
+
+        # 현재 질문에 언어 컨텍스트 추가
         if request.type == "simple":
             if request.code.strip():
                 current_prompt = f"""
-다음 코드에 대한 질문에 답변해주세요:
+다음 코드와 질문을 확인하고 답변해주세요:
 
 코드:
 {request.code}
 
 질문:
 {request.question}
+
+{f'이 코드를 {target_language}로 변환해주세요.' if target_language else ''}
 """
             else:
                 current_prompt = request.question

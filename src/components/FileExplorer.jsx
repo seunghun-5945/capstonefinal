@@ -378,7 +378,7 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
       console.error("Error fetching user repos:", error);
       if (error.response?.status === 401) {
         localStorage.removeItem("github_token");
-        navigate("/");
+        navigate("/#/");
       }
     }
   };

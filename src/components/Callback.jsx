@@ -15,13 +15,13 @@ function Callback() {
         );
         const { access_token } = response.data;
         localStorage.setItem("github_token", access_token);
-        navigate("/");
+        navigate("/#/");
       } catch (error) {
         if (axios.isCancel(error)) {
           console.log("Request canceled:", error.message);
         } else {
           console.error("Error exchanging code for token:", error);
-          navigate("/");
+          navigate("/#/");
         }
       }
     },

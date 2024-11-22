@@ -20,13 +20,24 @@ function createWindow() {
       allowRunningInsecureContent: true,
       preload: path.join(__dirname, "preload.cjs"),
       webSecurity: false,
+      devTools: true, // DevTools 강제 활성화
     },
   });
 
-  win.loadURL("http://localhost:5173");
+  win.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
+    console.error("Page failed to load:", errorCode, errorDescription);
+  });
+
+  // DevTools 강제 오픈
+  win.webContents.openDevTools();
+
+  if (process.env.NODE_ENV === "development") {
+    win.loadURL("http://localhost:5173");
+  } else {
+    win.loadFile(path.join(__dirname, "dist", "renderer", "index.html"));
+  }
 
   mainWindow = win;
-  mainWindow.webContents.openDevTools();
 }
 
 function broadcastEnvironmentChange(env) {

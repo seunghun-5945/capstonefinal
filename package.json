@@ -7,7 +7,41 @@
   "scripts": {
     "dev": "vite",
     "electron": "electron .",
-    "electron:dev": "concurrently \"yarn dev\" \"wait-on http://localhost:5173 && yarn electron\""
+    "electron:dev": "concurrently \"yarn dev\" \"wait-on http://localhost:5173 && yarn electron\"",
+    "build": "electron-builder build",
+    "build:mac": "electron-builder build --mac",
+    "build:win": "electron-builder build --win --config.win.signAndEditExecutable=false",
+    "build:linux": "electron-builder build --linux"
+  },
+  "build": {
+    "appId": "com.example.app",
+    "productName": "My Electron App",
+    "directories": {
+      "output": "dist"
+    },
+    "icon": "icons/icon.ico",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "icons/icon.icns"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icons/icon.ico"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "icons/icon.png"
+    }
   },
   "dependencies": {
     "@babel/runtime": "^7.25.6",
@@ -16,7 +50,6 @@
     "ace-builds": "^1.36.2",
     "axios": "^1.7.7",
     "concurrently": "^9.0.1",
-    "electron": "^33.2.0",
     "lucide-react": "^0.454.0",
     "monaco-editor": "^0.52.0",
     "monaco-languageclient": "^8.8.3",
@@ -48,7 +81,8 @@
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^9.0.1",
     "cross-env": "^7.0.3",
-    "electron-builder": "^25.1.7",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "eslint": "^9.9.0",
     "eslint-plugin-react": "^7.35.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

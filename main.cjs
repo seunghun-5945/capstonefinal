@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, session } = require("electron");
 const path = require("path");
 const fs = require("fs").promises;
 const { exec, spawn } = require("child_process");
@@ -17,22 +17,17 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      allowRunningInsecureContent: true,
       preload: path.join(__dirname, "preload.cjs"),
-      webgl: false, // WebGL 비활성화
-      offscreen: false, // 오프스크린 렌더링 비활성화
+      webSecurity: false,
     },
   });
 
   win.loadURL("http://localhost:5173");
 
-  // GPU 가속 비활성화
-  win.webContents.session.setPermissionCheckHandler(() => false);
-  win.webContents.session.setDevicePermissionHandler(() => false);
-
-  win.webContents.openDevTools();
   mainWindow = win;
+  mainWindow.webContents.openDevTools();
 }
-
 
 function broadcastEnvironmentChange(env) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -40,28 +35,18 @@ function broadcastEnvironmentChange(env) {
   });
 }
 
-app.disableHardwareAcceleration();
-
 app.whenReady().then(() => {
   createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  app.quit();
 });
 
 // 크로스 플랫폼 경로 헬퍼 함수
 const getPythonExecutablePath = (envPath, isCondaEnv = false) => {
   const isWindows = process.platform === "win32";
-  if (isCondaEnv) return "python"; // conda run을 사용할 것이므로 직접 python 실행 경로는 불필요
+  if (isCondaEnv) return "python";
 
   return isWindows
     ? path.join(envPath, "Scripts", "python.exe")
@@ -92,7 +77,7 @@ const killProcess = async () => {
       });
     } else {
       try {
-        process.kill(-childProcess.pid); // 프로세스 그룹 전체 종료
+        process.kill(-childProcess.pid);
       } catch (error) {
         console.error("Failed to kill process group:", error);
         childProcess.kill("SIGTERM");
@@ -118,36 +103,54 @@ const killProcess = async () => {
 };
 
 // IPC 핸들러들
-ipcMain.handle('dialog:openFile', async () => {
+ipcMain.handle("dialog:openDirectory", async () => {
   try {
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile'],
-      filters: [
-        { name: 'All Files', extensions: ['*'] },
-        { name: 'Text Files', extensions: ['txt', 'md', 'json', 'js', 'py', 'c'] }
-      ]
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ["openDirectory"],
+      title: "로컬 폴더 선택",
     });
 
     if (!result.canceled && result.filePaths.length > 0) {
-      const filePath = result.filePaths[0];
-      // fs.promises.readFile 사용
-      const fileContent = await fs.readFile(filePath, 'utf-8');
-      return { filePath, fileContent };
+      return result.filePaths[0];
     }
     return null;
   } catch (error) {
-    console.error('Error in openFile handler:', error);
+    console.error("Error opening directory dialog:", error);
     throw error;
   }
 });
 
+ipcMain.handle("dialog:openFile", async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [
+        { name: "All Files", extensions: ["*"] },
+        {
+          name: "Text Files",
+          extensions: ["txt", "md", "json", "js", "py", "c"],
+        },
+      ],
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      const filePath = result.filePaths[0];
+      const fileContent = await fs.readFile(filePath, "utf-8");
+      return { filePath, fileContent };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error in openFile handler:", error);
+    throw error;
+  }
+});
 
 ipcMain.handle("get-initial-path", () => {
   return process.cwd();
 });
 
-ipcMain.handle("read-directory", async (event, path) => {
-  const files = await fs.readdir(path, { withFileTypes: true });
+ipcMain.handle("read-directory", async (event, dirPath) => {
+  const files = await fs.readdir(dirPath, { withFileTypes: true });
   return files.map((file) => ({
     name: file.name,
     isDirectory: file.isDirectory(),
@@ -210,7 +213,7 @@ ipcMain.handle("run-code", async (event, code, language) => {
       let spawnOptions = {
         shell: true,
         env: { ...process.env },
-        detached: !isWindows, // Unix 시스템에서는 프로세스 그룹 생성
+        detached: !isWindows,
       };
 
       let command;
@@ -246,7 +249,7 @@ ipcMain.handle("run-code", async (event, code, language) => {
         childProcess = spawn(command, args, spawnOptions);
 
         if (!isWindows) {
-          childProcess.unref(); // Unix 시스템에서 부모 프로세스와 분리
+          childProcess.unref();
         }
 
         childProcess.stdout.on("data", (data) => {

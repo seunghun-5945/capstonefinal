@@ -4,13 +4,53 @@ import { TbRefresh } from "react-icons/tb";
 
 const Container = styled.div`
   width: 100%;
-  height: 30%;
+  height: 25%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: space-around;
   color: white;
-  border-top: 1px solid gray;
+  border-top: 1px solid white;
+`;
+
+const StyledSelect = styled.select`
+  width: 80%;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  color: #cccccc;
+  background-color: #2d2d2d;
+  border: 1px solid white;
+  border-radius: 4px;
+  cursor: pointer;
+  appearance: none;
+  position: relative;
+  transition: border-color 0.2s;
+
+  /* 화살표 커스텀 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23cccccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 40px;
+
+  &:hover {
+    border-color: #525252;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #0078d4;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  option {
+    background-color: #2d2d2d;
+    color: #cccccc;
+    padding: 8px;
+  }
 `;
 
 const VirtualEnvironmentSelector = () => {
@@ -147,7 +187,6 @@ const VirtualEnvironmentSelector = () => {
         command: activationCommand,
         platform,
       });
-
       setActiveEnv(env);
       setError(`Successfully activated ${env.name} (${env.type})`);
     } catch (err) {
@@ -160,9 +199,9 @@ const VirtualEnvironmentSelector = () => {
     <Container>
       <h3>Python 가상환경 설정</h3>
       <div className="mb-2">
-        <TbRefresh 
+        <TbRefresh
           onClick={loadEnvironments}
-          style={{fontSize:"30px"}}
+          style={{ fontSize: "30px" }}
           disabled={loading}
         />
       </div>
@@ -170,9 +209,9 @@ const VirtualEnvironmentSelector = () => {
       {loading && (
         <div className="text-sm text-gray-400">Loading environments...</div>
       )}
-
       {error && (
         <div
+          style={{ width: "100%", textAlign: "center" }}
           className={`text-sm mb-2 ${
             error.includes("Successfully") ? "text-green-500" : "text-red-500"
           }`}
@@ -180,9 +219,8 @@ const VirtualEnvironmentSelector = () => {
           {error}
         </div>
       )}
-
       {environments.length > 0 ? (
-        <select
+        <StyledSelect
           onChange={(e) => {
             const env = environments[e.target.value];
             if (env) handleActivateEnv(env);
@@ -200,7 +238,7 @@ const VirtualEnvironmentSelector = () => {
               {env.name} ({env.type})
             </option>
           ))}
-        </select>
+        </StyledSelect>
       ) : (
         !loading &&
         !error && (

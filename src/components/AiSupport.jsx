@@ -9,110 +9,158 @@ const Container = styled.div`
   position: absolute;
   bottom: 0;
   right: 0;
-  background-color: #ffffff;
-  z-index: 30;
-  padding: 20px;
+  background-color: #18181b;
+  color: #f1f1f1;
   resize: horizontal;
   overflow: auto;
   min-width: 300px;
   max-width: 80%;
-  box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
-  border-left: 1px solid #e0e0e0;
+  border-left: 1px solid #27272a;
+  z-index: 1000;
+`;
 
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background-color: #f0f0f0;
-    cursor: ew-resize;
-  }
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #27272a;
+`;
+
+const Title = styled.h1`
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin: 0;
 `;
 
 const ChatContainer = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background-color: #f5f5f7;
-  border-radius: 12px;
-  margin: 10px 0;
+  gap: 16px;
+  background-color: #18181b;
 
   &::-webkit-scrollbar {
     width: 6px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: #d1d1d6;
+    background-color: #3f3f46;
     border-radius: 3px;
   }
+
+  &::-webkit-scrollbar-track {
+    background-color: #18181b;
+  }
+`;
+
+const MessageWrapper = styled.div`
+  display: flex;
+  justify-content: ${(props) => (props.isUser ? "flex-end" : "flex-start")};
+  margin-bottom: 16px;
 `;
 
 const Message = styled.div`
   max-width: 70%;
   padding: 12px 16px;
-  border-radius: 20px;
+  border-radius: 8px;
   word-wrap: break-word;
   white-space: pre-wrap;
-  position: relative;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  font-size: 0.95rem;
+  font-size: 0.875rem;
+  background-color: ${(props) => (props.isUser ? "#2563eb" : "#27272a")};
+  color: ${(props) => (props.isUser ? "#ffffff" : "#f1f1f1")};
+  border: ${(props) => (props.isUser ? "none" : "1px solid #3f3f46")};
 
-  ${(props) =>
-    props.isUser
-      ? `
-    align-self: flex-end;
-    background-color: #007AFF;
-    color: white;
-    margin-left: 30%;
-  `
-      : `
-    align-self: flex-start;
-    background-color: #ffffff;
-    color: #1d1d1f;
-    margin-right: 30%;
-    border: 1px solid #e0e0e0;
-  `}
+  pre {
+    background-color: #27272a;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #3f3f46;
+    margin: 8px 0;
+    font-family: "Consolas", "Monaco", monospace;
+    font-size: 0.875rem;
+  }
+
+  code {
+    font-family: "Consolas", "Monaco", monospace;
+    background-color: #27272a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const Button = styled.button`
+  padding: ${(props) => (props.small ? "6px 12px" : "8px 16px")};
+  border-radius: 6px;
+  font-size: ${(props) => (props.small ? "0.75rem" : "0.875rem")};
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: white;
+
+  ${(props) => {
+    if (props.apply)
+      return `
+      background-color: #059669;
+      &:hover { background-color: #047857; }
+    `;
+    if (props.reject)
+      return `
+      background-color: #dc2626;
+      &:hover { background-color: #b91c1c; }
+    `;
+    return `
+      background-color: #2563eb;
+      &:hover { background-color: #1d4ed8; }
+    `;
+  }}
+
+  &:active {
+    transform: scale(0.98);
+  }
 `;
 
 const InputContainer = styled.div`
-  display: flex;
-  gap: 12px;
-  padding: 10px;
-  align-items: flex-start;
-  background-color: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
+  padding: 16px;
+  border-top: 1px solid #27272a;
 `;
 
-const StyledInput = styled.textarea`
+const InputWrapper = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+`;
+
+const StyledTextarea = styled.textarea`
   flex: 1;
   min-height: 40px;
   max-height: 200px;
-  border-radius: 8px;
-  padding: 12px 16px;
-  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: #27272a;
+  border: 1px solid #3f3f46;
+  color: #f1f1f1;
+  font-size: 0.875rem;
   resize: none;
-  overflow-y: auto;
-  overflow-x: hidden;
-  line-height: 1.5;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 0.95rem;
-  background-color: #f5f5f7;
-  color: #1d1d1f;
 
   &::placeholder {
-    color: #86868b;
+    color: #71717a;
   }
 
   &:focus {
     outline: none;
-    background-color: #ffffff;
-    box-shadow: 0 0 0 2px #007aff40;
+    border-color: #2563eb;
   }
 
   &::-webkit-scrollbar {
@@ -120,156 +168,49 @@ const StyledInput = styled.textarea`
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: #d1d1d6;
+    background-color: #3f3f46;
     border-radius: 3px;
-  }
-`;
-
-const Button = styled.button`
-  padding: 10px 18px;
-  border-radius: 8px;
-  cursor: pointer;
-  background-color: #007aff;
-  color: white;
-  border: none;
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #0066d9;
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-`;
-
-const CodeActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-`;
-
-const ActionButton = styled.button`
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: none;
-  font-size: 0.85rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-
-  &.apply {
-    background-color: #34c759;
-    color: white;
-
-    &:hover {
-      background-color: #2db14d;
-    }
-  }
-
-  &.reject {
-    background-color: #ff3b30;
-    color: white;
-
-    &:hover {
-      background-color: #e0352b;
-    }
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-`;
-
-const CodeBlock = styled.div`
-  position: relative;
-  margin: 16px 0;
-  background-color: #1e1e1e;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-`;
-
-const CodeHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background-color: #2d2d2d;
-  color: #e0e0e0;
-  font-size: 0.85rem;
-  border-bottom: 1px solid #3d3d3d;
-
-  span {
-    color: #888;
-    font-family: "SF Mono", Consolas, monospace;
-    font-size: 0.8rem;
-  }
-`;
-
-const CopyButton = styled.button`
-  background-color: transparent;
-  border: 1px solid #4d4d4d;
-  color: #888;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #3d3d3d;
-    color: #fff;
-  }
-
-  &:active {
-    transform: scale(0.98);
-  }
-`;
-
-const CodeContent = styled.pre`
-  margin: 0;
-  padding: 16px;
-  color: #d4d4d4;
-  font-family: "SF Mono", Consolas, monospace;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  overflow-x: auto;
-  background-color: #1e1e1e;
-
-  &::-webkit-scrollbar {
-    height: 6px;
   }
 
   &::-webkit-scrollbar-track {
-    background: #1e1e1e;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background-color: #4d4d4d;
-    border-radius: 3px;
-
-    &:hover {
-      background-color: #5d5d5d;
-    }
+    background-color: #27272a;
   }
 `;
 
 const AiSupport = ({ onCodeApply, currentCode }) => {
-  const [messages, setMessages] = useState([]);
+  // localStorage에서 메시지 불러오기
+  const [messages, setMessages] = useState(() => {
+    const savedMessages = localStorage.getItem("aiSupportMessages");
+    return savedMessages ? JSON.parse(savedMessages) : [];
+  });
+
   const [question, setQuestion] = useState("");
   const chatContainerRef = useRef(null);
 
+  // 메시지가 변경될 때마다 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem("aiSupportMessages", JSON.stringify(messages));
+  }, [messages]);
+
+  // 채팅창 스크롤
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop =
         chatContainerRef.current.scrollHeight;
     }
+  }, [messages]);
+
+  // 컴포넌트가 언마운트될 때 메시지 저장
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      localStorage.setItem("aiSupportMessages", JSON.stringify(messages));
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      localStorage.setItem("aiSupportMessages", JSON.stringify(messages));
+    };
   }, [messages]);
 
   const extractCodeFromMessage = (messageText) => {
@@ -286,8 +227,6 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
       code: match[2].trim(),
     }));
 
-    console.log("찾은 코드 블록들:", codeBlocks);
-
     const editorLanguage =
       currentCode.includes("def ") || currentCode.includes("import ")
         ? "python"
@@ -300,16 +239,7 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
         (editorLanguage === "python" && block.language.toLowerCase() === "py")
     );
 
-    if (matchingBlock) {
-      console.log("적용할 코드 블록:", matchingBlock);
-      return matchingBlock.code;
-    }
-
-    console.log(
-      "언어 일치하는 코드 블록이 없어 첫 번째 블록 사용:",
-      codeBlocks[0]
-    );
-    return codeBlocks[0].code;
+    return matchingBlock ? matchingBlock.code : codeBlocks[0].code;
   };
 
   const handleCodeApplication = async (messageText, isApplying) => {
@@ -331,10 +261,7 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
             }
           );
 
-          if (!response.ok) {
-            throw new Error("코드 분석 실패");
-          }
-
+          if (!response.ok) throw new Error("코드 분석 실패");
           const changes = await response.json();
           onCodeApply(code, changes.changes);
         } catch (error) {
@@ -348,28 +275,11 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
     if (!question.trim()) return;
 
     const newQuestion = question.trim();
-    const newUserMessage = { text: newQuestion, isUser: true };
-
-    // 사용자 메시지 추가
-    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+    setMessages((prev) => [...prev, { text: newQuestion, isUser: true }]);
     setQuestion("");
 
     try {
-      // 이전 대화에서 사용된 프로그래밍 언어 파악
-      const codeLanguages = messages
-        .filter((msg) => !msg.isUser && msg.text.includes("```"))
-        .map((msg) => {
-          const match = msg.text.match(/```(\w+)/);
-          return match ? match[1] : null;
-        })
-        .filter(Boolean);
-
-      const currentLanguage =
-        codeLanguages.length > 0
-          ? codeLanguages[codeLanguages.length - 1]
-          : null;
-
-      const response = await fetch("http://localhost:8000/api/gpt-4o-mini", {
+      const result = await fetch("http://localhost:8000/api/gpt-4o-mini", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -380,27 +290,16 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
           current_code: currentCode,
           question: newQuestion,
           type: "simple",
-          chat_history: [...messages, newUserMessage].map((msg) => ({
-            text: msg.text,
-            isUser: msg.isUser,
-            language: currentLanguage,
-          })),
-          current_language: currentLanguage,
+          chat_history: messages,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { text: data.answer, isUser: false },
-      ]);
+      if (!result.ok) throw new Error(`HTTP error! status: ${result.status}`);
+      const data = await result.json();
+      setMessages((prev) => [...prev, { text: data.answer, isUser: false }]);
     } catch (error) {
-      setMessages((prevMessages) => [
-        ...prevMessages,
+      setMessages((prev) => [
+        ...prev,
         { text: `오류: ${error.message}`, isUser: false },
       ]);
     }
@@ -414,109 +313,65 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
   };
 
   const handleRefresh = () => {
+    // 로컬 스토리지에서도 메시지 삭제
+    localStorage.removeItem("aiSupportMessages");
     setMessages([]);
     setQuestion("");
   };
 
-  const MessageComponent = ({ message, index }) => {
-    const [copyStatus, setCopyStatus] = useState("");
-
-    const copyToClipboard = async (code) => {
-      try {
-        await navigator.clipboard.writeText(code);
-        setCopyStatus("복사됨");
-        setTimeout(() => setCopyStatus(""), 2000);
-      } catch (err) {
-        console.error("복사 실패:", err);
-        setCopyStatus("실패");
-      }
-    };
-
-    const renderContent = (text) => {
-      const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-      const parts = [];
-      let lastIndex = 0;
-      let match;
-
-      while ((match = codeBlockRegex.exec(text)) !== null) {
-        // 코드 블록 이전의 텍스트 추가
-        if (match.index > lastIndex) {
-          parts.push(text.substring(lastIndex, match.index));
-        }
-
-        const language = match[1] || "text";
-        const code = match[2].trim();
-
-        // 코드 블록 컴포넌트 추가
-        parts.push(
-          <CodeBlock key={match.index}>
-            <CodeHeader>
-              <span>{language}</span>
-              <CopyButton onClick={() => copyToClipboard(code)}>
-                복사
-              </CopyButton>
-            </CodeHeader>
-            <CodeContent>{code}</CodeContent>
-          </CodeBlock>
-        );
-
-        lastIndex = match.index + match[0].length;
-      }
-
-      // 남은 텍스트 추가
-      if (lastIndex < text.length) {
-        parts.push(text.substring(lastIndex));
-      }
-
-      return parts;
-    };
-
+  const MessageComponent = ({ message }) => {
     const isOptimizedCode = !message.isUser && message.text.includes("```");
 
     return (
-      <Message isUser={message.isUser}>
-        {renderContent(message.text)}
-        {isOptimizedCode && (
-          <CodeActionButtons>
-            <ActionButton
-              className="apply"
-              onClick={() => handleCodeApplication(message.text, true)}
-            >
-              코드 적용하기
-            </ActionButton>
-            <ActionButton
-              className="reject"
-              onClick={() => handleCodeApplication(message.text, false)}
-            >
-              거절하기
-            </ActionButton>
-          </CodeActionButtons>
-        )}
-      </Message>
+      <MessageWrapper isUser={message.isUser}>
+        <Message isUser={message.isUser}>
+          {message.text}
+          {isOptimizedCode && (
+            <ActionButtons>
+              <Button
+                small
+                apply
+                onClick={() => handleCodeApplication(message.text, true)}
+              >
+                코드 적용하기
+              </Button>
+              <Button
+                small
+                reject
+                onClick={() => handleCodeApplication(message.text, false)}
+              >
+                거절하기
+              </Button>
+            </ActionButtons>
+          )}
+        </Message>
+      </MessageWrapper>
     );
   };
 
   return (
     <Container>
-      <h1>AI 응답</h1>
-      <Button onClick={handleRefresh} style={{ alignSelf: "flex-end" }}>
-        새로고침
-      </Button>
+      <Header>
+        <Title>AI 응답</Title>
+        <Button onClick={handleRefresh}>새 대화 시작하기</Button>
+      </Header>
 
       <ChatContainer ref={chatContainerRef}>
         {messages.map((message, index) => (
-          <MessageComponent key={index} message={message} index={index} />
+          <MessageComponent key={index} message={message} />
         ))}
       </ChatContainer>
 
       <InputContainer>
-        <StyledInput
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="질문을 입력하세요..."
-        />
-        <Button onClick={askCopilot}>전송</Button>
+        <InputWrapper>
+          <StyledTextarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="질문을 입력하세요..."
+          />
+          <Button onClick={askCopilot}>전송</Button>
+        </InputWrapper>
       </InputContainer>
     </Container>
   );

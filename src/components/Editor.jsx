@@ -94,16 +94,19 @@ const DiffButton = styled.button`
 `;
 
 const SuggestionText = styled.div`
+  width: 95%;
+  height: 64%;
   position: absolute;
-  color: #666;
-  opacity: 0.8;
+  color: white;
+  opacity: 0.5;
   pointer-events: none;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-  font-size: 16px;
+  font-size: 14px;
   white-space: pre;
-  background: transparent;
-  padding: 0 4px;
-  z-index: 100;
+  z-index: 1;
+  padding: 2px 12px;
+  border-radius: 2px;
+  overflow: visible;
 `;
 
 const getCommonPrefixLength = (str1, str2) => {
@@ -125,6 +128,39 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
   const debounceTimerRef = useRef(null);
   const [suggestion, setSuggestion] = useState("");
   const [cursorPosition, setCursorPosition] = useState({ row: 0, column: 0 });
+  const [suggestionPosition, setSuggestionPosition] = useState({
+    top: 0,
+    left: 0,
+  });
+  const aiSupportRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      // Windows/Linux: Ctrl + S, Mac: Cmd + S
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault(); // 브라우저 기본 저장 동작 방지
+
+        if (filePath) {
+          try {
+            const content = editorRef.current.editor.getValue();
+            await window.electronAPI.writeFile(filePath, content);
+            // 저장 성공 표시를 위한 상태 업데이트나 알림 추가 가능
+            console.log("File saved successfully");
+          } catch (error) {
+            console.error("Error saving file:", error);
+          }
+        }
+      }
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener("keydown", handleKeyDown);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [filePath]); // filePath가 변경될 때마다 useEffect 재실행
 
   useEffect(() => {
     if (initialContent) {
@@ -428,7 +464,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           width="100%"
           height="100%"
           fontSize={14}
-          showPrintMargin={true}
+          showPrintMargin={false} // 여기를 false로 변경
           showGutter={true}
           highlightActiveLine={true}
           setOptions={{
@@ -450,11 +486,16 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
         {suggestion && (
           <SuggestionText
             style={{
-              top: `${cursorPosition.row * 19 + 4}px`,
-              left: `${cursorPosition.column * 8 + 50}px`,
+              top: `${(cursorPosition.row + 1) * 19}px`, // 18은 줄 높이
+              left: "40px",
+              width: openAiSupport ? "50%" : "100%", // AI Support가 열려있을 때 너비를 50%로 제한
+              whiteSpace: "pre-wrap", // 자동 개행 활성화
+              wordWrap: "break-word", // 단어 단위로 개행
             }}
           >
             {suggestion}
+            Suggestion 내용
+            {/* 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. */}
           </SuggestionText>
         )}
         {openAiSupport && (

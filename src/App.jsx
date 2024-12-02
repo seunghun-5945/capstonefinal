@@ -66,6 +66,7 @@ const App = ({  }) => {
   const handleLogin = () => {
     const scope = 'repo';
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${import.meta.env.VITE_APP_GITHUB_CLIENT_ID}&redirect_uri=http://localhost:5173/callback&scope=${scope}`;
+    console.log("성공적으로 로그인 되었습니다");
   };
 
   return (

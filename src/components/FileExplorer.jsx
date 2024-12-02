@@ -217,9 +217,11 @@ const TreeItem = ({
   const isDirectory =
     fileSource === "github" ? item.type === "dir" : item.isDirectory;
 
-  const handleToggle = async (e) => {
+  // 전체 아이템 클릭 시 처리하는 함수
+  const handleClick = async (e) => {
     e.stopPropagation();
     if (isDirectory) {
+      // 디렉토리인 경우 토글 처리
       if (!isOpen && children.length === 0) {
         if (fileSource === "github") {
           try {
@@ -270,13 +272,16 @@ const TreeItem = ({
         }
       }
       setIsOpen(!isOpen);
+    } else {
+      // 파일인 경우 선택 처리
+      onSelect(item);
     }
   };
 
   return (
     <div style={{ width: "100%" }}>
-      <CommonItemContainer depth={depth} onClick={() => onSelect(item)}>
-        <ChevronIcon onClick={handleToggle}>
+      <CommonItemContainer depth={depth} onClick={handleClick}>
+        <ChevronIcon onClick={handleClick}>
           {isDirectory &&
             (isOpen ? (
               <FaChevronDown size={16} />
@@ -455,27 +460,22 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
   };
 
   const handleFileSelect = async (file) => {
-    if (fileSource === "github" && file.type === "file") {
-      setSelectedFile(file.path);
-      try {
-        const response = await axios.get(
-          "http://localhost:8000/users/api/file-content",
-          {
-            params: {
-              repo_name: selectedRepo,
-              file_path: file.path,
-            },
-            headers,
-          }
-        );
-        setFileContent(response.data.content);
-        onFileContentChange(response.data.content);
-      } catch (error) {
-        console.error("Error fetching file content:", error);
+    try {
+      if (fileSource === "github" && file.type === "file") {
+        // GitHub 파일 처리...
+      } else if (fileSource === "local" && !file.isDirectory) {
+        console.log("Selected file:", file); // 디버깅용
+        const filePath = file.path || `${currentPath}/${file.name}`.replace(/\/+/g, "/");
+        console.log("File path to open:", filePath); // 디버깅용
+        
+        // 파일 내용 읽기 추가
+        const content = await window.electronAPI.readFile(filePath);
+        onFileSelect(filePath);
+        onFileContentChange(content); // Editor에 내용 전달
       }
-    } else if (fileSource === "local" && !file.isDirectory) {
-      const filePath = `${currentPath}/${file.name}`.replace(/\/+/g, "/");
-      onFileSelect(filePath);
+    } catch (error) {
+      console.error("Error selecting file:", error);
+      setError(`Failed to select file: ${error.message}`);
     }
   };
 

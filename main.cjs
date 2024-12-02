@@ -118,6 +118,24 @@ const killProcess = async () => {
 };
 
 // IPC 핸들러들
+
+ipcMain.handle('dialog:openDirectory', async () => {
+  try {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory']
+    });
+    
+    if (!result.canceled) {
+      return result.filePaths[0];
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error in openDirectory handler:', error);
+    throw error;
+  }
+});
+
 ipcMain.handle('dialog:openFile', async () => {
   try {
     const result = await dialog.showOpenDialog({
@@ -159,7 +177,14 @@ ipcMain.handle("get-parent-path", (event, currentPath) => {
 });
 
 ipcMain.handle("read-file", async (event, filePath) => {
-  return await fs.readFile(filePath, "utf-8");
+  try {
+    console.log("Reading file:", filePath); // 디버깅용
+    const content = await fs.readFile(filePath, "utf-8");
+    return content;
+  } catch (error) {
+    console.error("Error reading file:", error);
+    throw new Error(`Failed to read file: ${error.message}`);
+  }
 });
 
 ipcMain.handle("write-file", async (event, filePath, content) => {

@@ -20,7 +20,7 @@ const Container = styled.div`
 `;
 
 const Header = styled.div`
-  display: flex;  
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px;
@@ -286,7 +286,7 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          code: "",
+          code: currentCode,
           current_code: currentCode,
           question: newQuestion,
           type: "simple",

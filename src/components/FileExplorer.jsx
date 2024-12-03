@@ -462,16 +462,33 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
   const handleFileSelect = async (file) => {
     try {
       if (fileSource === "github" && file.type === "file") {
-        // GitHub 파일 처리...
+        const fileExtension = file.name.split(".").pop().toLowerCase();
+
+        // JavaScript나 Python 파일만 처리
+        if (fileExtension === "js" || fileExtension === "py") {
+          const response = await axios.get(
+            "http://localhost:8000/users/api/file-content",
+            {
+              params: {
+                token: localStorage.getItem("github_token"),
+                repo_name: selectedRepo,
+                file_path: file.path,
+              },
+            }
+          );
+
+          const content = response.data.content;
+          onFileSelect(file.path);
+          onFileContentChange(content); // Editor 컴포넌트로 파일 내용 전달
+        } else {
+          alert("JavaScript 또는 Python 파일만 선택할 수 있습니다.");
+        }
       } else if (fileSource === "local" && !file.isDirectory) {
-        console.log("Selected file:", file); // 디버깅용
-        const filePath = file.path || `${currentPath}/${file.name}`.replace(/\/+/g, "/");
-        console.log("File path to open:", filePath); // 디버깅용
-        
-        // 파일 내용 읽기 추가
+        const filePath =
+          file.path || `${currentPath}/${file.name}`.replace(/\/+/g, "/");
         const content = await window.electronAPI.readFile(filePath);
         onFileSelect(filePath);
-        onFileContentChange(content); // Editor에 내용 전달
+        onFileContentChange(content);
       }
     } catch (error) {
       console.error("Error selecting file:", error);

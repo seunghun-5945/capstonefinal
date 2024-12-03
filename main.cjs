@@ -8,6 +8,15 @@ let mainWindow;
 let currentEnv = null;
 let childProcess = null;
 
+const getCondaPath = () => {
+  const isWindows = process.platform === "win32";
+  const homeDir = os.homedir();
+
+  return isWindows
+    ? path.join(homeDir, "Anaconda3", "Scripts", "conda.exe")
+    : path.join(homeDir, "anaconda3", "bin", "conda");
+};
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1300,
@@ -20,7 +29,7 @@ function createWindow() {
       allowRunningInsecureContent: true,
       preload: path.join(__dirname, "preload.cjs"),
       webSecurity: false,
-      devTools: true, // DevTools 강제 활성화
+      devTools: true,
     },
   });
 
@@ -28,7 +37,6 @@ function createWindow() {
     console.error("Page failed to load:", errorCode, errorDescription);
   });
 
-  // DevTools 강제 오픈
   win.webContents.openDevTools();
 
   if (process.env.NODE_ENV === "development") {
@@ -54,7 +62,6 @@ app.on("window-all-closed", () => {
   app.quit();
 });
 
-// 크로스 플랫폼 경로 헬퍼 함수
 const getPythonExecutablePath = (envPath, isCondaEnv = false) => {
   const isWindows = process.platform === "win32";
   if (isCondaEnv) return "python";
@@ -71,7 +78,6 @@ const getActivatePath = (envPath) => {
     : path.join(envPath, "bin", "activate");
 };
 
-// 프로세스 종료 함수
 const killProcess = async () => {
   if (!childProcess) return false;
 
@@ -113,7 +119,6 @@ const killProcess = async () => {
   });
 };
 
-// IPC 핸들러들
 ipcMain.handle("dialog:openDirectory", async () => {
   try {
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -187,8 +192,9 @@ ipcMain.handle("get-home-path", () => {
 
 ipcMain.handle("get-conda-envs", async () => {
   try {
+    const condaPath = getCondaPath();
     const { stdout } = await new Promise((resolve, reject) => {
-      exec("conda env list", (error, stdout, stderr) => {
+      exec(`"${condaPath}" env list`, (error, stdout, stderr) => {
         if (error) reject(error);
         else resolve({ stdout, stderr });
       });
@@ -232,7 +238,8 @@ ipcMain.handle("run-code", async (event, code, language) => {
 
       if (currentEnv) {
         if (currentEnv.type === "conda") {
-          command = isWindows ? "conda" : "conda";
+          const condaPath = getCondaPath();
+          command = condaPath;
           args = ["run", "-n", currentEnv.name, "python", tmpFilePath];
         } else {
           if (isWindows) {
@@ -346,7 +353,8 @@ ipcMain.handle("activate-env", async (event, env) => {
     const isWindows = process.platform === "win32";
 
     if (env.type === "conda") {
-      const command = `conda run -n ${env.name} python --version`;
+      const condaPath = getCondaPath();
+      const command = `"${condaPath}" run -n ${env.name} python --version`;
       await new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
           if (error) reject(error);
@@ -401,7 +409,8 @@ ipcMain.handle("execute-command", async (event, command) => {
 
   if (currentEnv) {
     if (currentEnv.type === "conda") {
-      finalCommand = `conda run -n ${currentEnv.name} ${command}`;
+      const condaPath = getCondaPath();
+      finalCommand = `"${condaPath}" run -n ${currentEnv.name} ${command}`;
     } else {
       if (isWindows) {
         const pythonPath = getPythonExecutablePath(currentEnv.path);
@@ -462,7 +471,8 @@ ipcMain.handle("execute-terminal-command", async (event, command) => {
 
     if (currentEnv) {
       if (currentEnv.type === "conda") {
-        shellCommand = `conda run -n ${currentEnv.name} ${command}`;
+        const condaPath = getCondaPath();
+        shellCommand = `"${condaPath}" run -n ${currentEnv.name} ${command}`;
       } else {
         const pythonPath = getPythonExecutablePath(currentEnv.path);
         if (command.startsWith("python ")) {

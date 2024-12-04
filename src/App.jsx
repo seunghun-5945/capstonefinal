@@ -8,6 +8,9 @@ import { VscSourceControl } from "react-icons/vsc";
 import { IoTerminal } from "react-icons/io5";
 import { IoFolderOpenSharp } from "react-icons/io5";
 import { Resizable } from "re-resizable";
+import { FaRegClone } from "react-icons/fa";
+import CloneRepo from "./components/CloneRepo";
+import { useNavigate } from "react-router-dom";
 
 const Container = styled.div`
   width: 100%;
@@ -47,11 +50,27 @@ const EditorContainer = styled.div`
 const App = ({  }) => {
   const [currentFile, setCurrentFile] = useState(null);
   const [fileContent, setFileContent] = useState("");
+  const [fileSource, setFileSource] = useState("local"); // 추가: 파일 소스 상태
   const [openTerminal, setOpenTerminal] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState(""); // 추가: 선택된 레포지토리 상태
+  const [openHierarchy, setOpenHierarchy] = useState('0.1%');
+  const [openCloneRepo, setOpenCloneRepo] = useState(false);
+  const navigate = useNavigate();
   const terminalRef = useRef(null);
 
-  const handleFileSelect = (filePath) => {
+  const handleHierarchy = () => {
+    if(openHierarchy === '0.1%') {
+      setOpenHierarchy('15%');
+    }
+    else {
+      setOpenHierarchy('0.1%');
+    }
+  };
+
+  // FileExplorer에서 파일 선택 시 호출되는 핸들러
+  const handleFileSelect = (filePath, source) => {
     setCurrentFile(filePath);
+    setFileSource(source);
   };
 
   const handleFileContentChange = (content) => {
@@ -69,14 +88,22 @@ const App = ({  }) => {
     console.log("성공적으로 로그인 되었습니다");
   };
 
+  const handleOpenCloneRepo = () => {
+    setOpenCloneRepo(!openCloneRepo);
+  }
+
   return (
     <Container>
+      {openCloneRepo && (
+        <CloneRepo />
+      )}
       <SideMenuBar>
         <FaGithub 
           onClick={handleLogin}
           style={{cursor:"pointer", color:"white"}}
         />
         <IoFolderOpenSharp 
+          onClick={handleHierarchy}
           style={{marginTop:"50px", cursor:"pointer", color:"white"}}
         />
         <VscSourceControl 
@@ -90,15 +117,19 @@ const App = ({  }) => {
           onClick={handleLogout}
           style={{marginTop:"50px", cursor:"pointer", color:"white"}}
         />
+        <FaRegClone 
+          onClick={handleOpenCloneRepo}
+          style={{marginTop:"50px", cursor:"pointer", color:"white"}}
+        />
       </SideMenuBar>
       <Resizable
-        defaultSize={{
-          width: '15%',
+        size={{  // defaultSize를 size로 변경
+          width: openHierarchy,
           height: '100%'
         }}
         minWidth="0%"
         maxWidth="40%"
-        enable={{ right: true }}
+        enable={{ right: openHierarchy !== '0%' }}  // 너비가 0일 때는 리사이즈 비활성화
         handleStyles={{
           right: {
             width: '5px',
@@ -107,11 +138,17 @@ const App = ({  }) => {
             background: 'gray'
           }
         }}
+        onResizeStop={(e, direction, ref, d) => {
+          // 수동 리사이즈 후 너비 상태 업데이트
+          const newWidth = Math.max(0, Math.min(40, (parseFloat(openHierarchy) + (d.width / window.innerWidth) * 100)));
+          setOpenHierarchy(`${newWidth}%`);
+        }}
       >
-        <HierarchyArea>
+        <HierarchyArea style={{ display: openHierarchy === '0%' ? 'none' : 'block' }}>
           <FileExplorer 
             onFileSelect={handleFileSelect}
             onFileContentChange={handleFileContentChange} 
+            setSelectedRepo={setSelectedRepo} // 추가: 레포지토리 선택 핸들러 전달
           />
         </HierarchyArea>
       </Resizable>
@@ -120,11 +157,13 @@ const App = ({  }) => {
         <EditorContainer>
           <Editor
             filePath={currentFile}
+            fileSource={fileSource}
+            selectedRepo={selectedRepo}
             terminalRef={terminalRef}
             initialContent={fileContent}
           />
         </EditorContainer>
-        <Resizable
+        {/* <Resizable
           defaultSize={{
             width: '15%',
             height: '100%'
@@ -141,30 +180,30 @@ const App = ({  }) => {
             }
           }}
         >
-        </Resizable>
+        </Resizable> */}
         {openTerminal && 
-                <Resizable
-                defaultSize={{
-                  width: '100%',
-                  height: '30vh'
-                }}
-                minHeight="10vh"
-                maxHeight="90vh"
-                enable={{
-                  top: true
-                }}
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  zIndex: 10
-                }}
-              >
-              <Terminal
-                onRef={(ref) => {
-                  terminalRef.current = ref;
-                }}
-              />
-              </Resizable>
+          <Resizable
+          defaultSize={{
+            width: '100%',
+            height: '30vh'
+          }}
+          minHeight="10vh"
+          maxHeight="90vh"
+          enable={{
+            top: true
+          }}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            zIndex: 10
+          }}
+        >
+        <Terminal
+          onRef={(ref) => {
+            terminalRef.current = ref;
+          }}
+        />
+        </Resizable>
         }
 
       </Frame>

@@ -1,5 +1,19 @@
 import React, { useState } from "react";
+import styled from "styled-components";
 import axios from "axios";
+
+const Container = styled.div`
+  width: 50%;
+  height: 50%;
+  position: absolute; 
+  top: 50%;
+  left: 50%; 
+  transform: translate(-50%, -50%); 
+  background-color: white;
+  z-index: 1001;
+  padding: 20px; 
+  border-radius: 8px;
+`;
 
 const CloneRepo = () => {
   const [repoUrl, setRepoUrl] = useState("");
@@ -10,7 +24,7 @@ const CloneRepo = () => {
     e.preventDefault();
 
     try {
-      const response = await axios.post("http://localhost:8000/clone-repo", {
+      const response = await axios.post("http://localhost:8000/users/clone-repo", {
         repo_url: repoUrl,
         destination: destination,
       });
@@ -21,7 +35,7 @@ const CloneRepo = () => {
   };
 
   return (
-    <div>
+    <Container>
       <h1>Clone GitHub Repository</h1>
       <form onSubmit={handleSubmit}>
         <div>
@@ -45,7 +59,7 @@ const CloneRepo = () => {
         <button type="submit">Clone Repository</button>
       </form>
       {message && <p>{message}</p>}
-    </div>
+    </Container>
   );
 };
 

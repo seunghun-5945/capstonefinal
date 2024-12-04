@@ -623,7 +623,6 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
           </div>
         )}
       </FileTreeContainer>
-      <CloneRepo />
       <VirtualEnvironmentSelector />
     </Container>
   );

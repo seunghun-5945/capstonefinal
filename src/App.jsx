@@ -95,7 +95,7 @@ const App = ({  }) => {
   return (
     <Container>
       {openCloneRepo && (
-        <CloneRepo />
+        <CloneRepo onClose={() => setOpenCloneRepo(false)} />
       )}
       <SideMenuBar>
         <FaGithub 

@@ -19,7 +19,6 @@ import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import VirtualEnvironmentSelector from "./VirtualEnvironmentSelector";
 import { PiArrowFatLineUpDuotone } from "react-icons/pi";
-import CloneRepo from "./CloneRepo";
 
 const Container = styled.div`
   width: 100%;

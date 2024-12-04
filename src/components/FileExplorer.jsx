@@ -75,7 +75,11 @@ const FileTreeContainer = styled.div`
   }
 `;
 
-const CommonItemContainer = styled.div`
+const CommonItemContainer = styled.div.attrs(props => ({
+  style: {
+    paddingLeft: `${(props.$depth || 0) * 20}px` // $ 추가
+  }
+}))`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -86,7 +90,7 @@ const CommonItemContainer = styled.div`
   width: 100%;
   min-width: 0;
   color: white;
-  padding-left: ${(props) => (props.depth || 0) * 20}px;
+  
   &:hover {
     background-color: rgba(243, 244, 246, 0.1);
   }
@@ -95,7 +99,7 @@ const CommonItemContainer = styled.div`
 const IconWrapper = styled.div`
   display: flex;
   align-items: center;
-  color: ${(props) => (props.isDirectory ? "#FFB300" : "inherit")};
+  color: ${props => props.$isDirectory ? "#FFB300" : "inherit"}; // $ 추가
   flex-shrink: 0;
   margin-right: 4px;
 `;
@@ -113,7 +117,7 @@ const ChevronIcon = styled.div`
 `;
 
 const FileName = styled.span`
-  color: ${(props) => (props.isDirectory ? "#FFB300" : "white")};
+  color: ${props => props.$isDirectory ? "#FFB300" : "white"};
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
@@ -122,7 +126,7 @@ const FileName = styled.span`
   min-width: 0;
 
   &:hover::after {
-    content: "${(props) => props.title}";
+    content: "${props => props.title}";
     position: absolute;
     background: #333;
     padding: 4px 8px;
@@ -130,7 +134,7 @@ const FileName = styled.span`
     font-size: 12px;
     margin-top: -20px;
     z-index: 1000;
-    display: ${(props) => (props.title.length > 20 ? "block" : "none")};
+    display: ${props => (props.title.length > 20 ? "block" : "none")};
   }
 `;
 
@@ -279,7 +283,7 @@ const TreeItem = ({
 
   return (
     <div style={{ width: "100%" }}>
-      <CommonItemContainer depth={depth} onClick={handleClick}>
+      <CommonItemContainer $depth={depth} onClick={handleClick}>
         <ChevronIcon onClick={handleClick}>
           {isDirectory &&
             (isOpen ? (
@@ -288,7 +292,7 @@ const TreeItem = ({
               <FaChevronRight size={16} />
             ))}
         </ChevronIcon>
-        <IconWrapper isDirectory={isDirectory}>
+        <IconWrapper $isDirectory={isDirectory}>
           {isDirectory ? (
             isOpen ? (
               <FaFolderOpen size={16} color="#FFB300" />
@@ -299,7 +303,7 @@ const TreeItem = ({
             getFileIcon(item.name)
           )}
         </IconWrapper>
-        <FileName title={item.name} isDirectory={isDirectory}>
+        <FileName title={item.name} $isDirectory={isDirectory}>
           {item.name}
         </FileName>
       </CommonItemContainer>
@@ -461,33 +465,30 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
   const handleFileSelect = async (file) => {
     try {
       if (fileSource === "github" && file.type === "file") {
-        const fileExtension = file.name.split(".").pop().toLowerCase();
-
-        // JavaScript나 Python 파일만 처리
-        if (fileExtension === "js" || fileExtension === "py") {
-          const response = await axios.get(
-            "http://localhost:8000/users/api/file-content",
-            {
-              params: {
-                token: localStorage.getItem("github_token"),
-                repo_name: selectedRepo,
-                file_path: file.path,
-              },
-            }
-          );
-
-          const content = response.data.content;
-          onFileSelect(file.path);
-          onFileContentChange(content); // Editor 컴포넌트로 파일 내용 전달
-        } else {
-          alert("JavaScript 또는 Python 파일만 선택할 수 있습니다.");
-        }
+        const response = await axios.get(
+          "http://localhost:8000/users/api/file-content",
+          {
+            params: { 
+              repo_name: selectedRepo, 
+              file_path: file.path 
+            },
+            headers
+          }
+        );
+        
+        // 응답 데이터가 객체인 경우 content 필드를 사용하거나 문자열로 변환
+        const content = typeof response.data === 'object' 
+          ? response.data.content || JSON.stringify(response.data) 
+          : String(response.data);
+  
+        onFileSelect(file.path);
+        onFileContentChange(content);
+        
       } else if (fileSource === "local" && !file.isDirectory) {
-        const filePath =
-          file.path || `${currentPath}/${file.name}`.replace(/\/+/g, "/");
+        const filePath = file.path || `${currentPath}/${file.name}`.replace(/\/+/g, "/");
         const content = await window.electronAPI.readFile(filePath);
         onFileSelect(filePath);
-        onFileContentChange(content);
+        onFileContentChange(String(content)); // 문자열로 확실하게 변환
       }
     } catch (error) {
       console.error("Error selecting file:", error);

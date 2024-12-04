@@ -287,7 +287,7 @@ const CloneRepo = ({ onClose }) => {
           <Button 
             type="button"
             onClick={onClose}
-            style={{backgroundColor:"red"}}>
+            style={{backgroundColor:"lightgray", color:"white"}}>
             닫기
           </Button>
         </ButtonGroup>

@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import AceEditor from "react-ace";
 import AiSupport from "./AiSupport";
+import axios from "axios";
+import ace from 'ace-builds';
 
 // Ace Editor 테마와 언어 모드 import
 import "ace-builds/src-noconflict/mode-javascript";
@@ -14,11 +16,23 @@ import "ace-builds/src-noconflict/theme-monokai";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/ext-language_tools";
 
+// Snippets import
+import "ace-builds/src-noconflict/snippets/javascript";
+import "ace-builds/src-noconflict/snippets/python";
+import "ace-builds/src-noconflict/snippets/html";
+import "ace-builds/src-noconflict/snippets/css";
+import "ace-builds/src-noconflict/snippets/json";
+import "ace-builds/src-noconflict/snippets/markdown";
+
 import { IoIosSave } from "react-icons/io";
 import { VscRunAll } from "react-icons/vsc";
 import { TiMediaStop } from "react-icons/ti";
 import { IoChatboxEllipsesOutline } from "react-icons/io5";
 
+// ace 설정
+ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12');
+
+// Styled Components
 const Container = styled.div`
   width: 100%;
   height: 100%;
@@ -64,35 +78,6 @@ const EditorFrame = styled.div`
   }
 `;
 
-const DiffButtons = styled.div`
-  position: absolute;
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-`;
-
-const DiffButton = styled.button`
-  padding: 2px 8px;
-  border-radius: 3px;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-
-  &.accept {
-    background: #34c759;
-    color: white;
-  }
-
-  &.reject {
-    background: #ff3b30;
-    color: white;
-  }
-`;
-
 const SuggestionText = styled.div`
   width: 95%;
   height: 64%;
@@ -109,6 +94,7 @@ const SuggestionText = styled.div`
   overflow: visible;
 `;
 
+// 유틸리티 함수
 const getCommonPrefixLength = (str1, str2) => {
   let i = 0;
   while (i < str1.length && i < str2.length && str1[i] === str2[i]) {
@@ -117,67 +103,105 @@ const getCommonPrefixLength = (str1, str2) => {
   return i;
 };
 
-const Editor = ({ filePath, terminalRef, initialContent }) => {
+const Editor = ({  
+    filePath = '', 
+    fileSource = 'local',
+    selectedRepo = '',
+    terminalRef = { current: null },
+    initialContent = ''  
+  }) => {
   const editorRef = useRef(null);
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("javascript");
   const [isRunning, setIsRunning] = useState(false);
   const [openAiSupport, setOpenAiSupport] = useState(true);
   const [codeMarkers, setCodeMarkers] = useState([]);
+  const [syntaxErrors, setSyntaxErrors] = useState([]);
   const socketRef = useRef(null);
   const debounceTimerRef = useRef(null);
   const [suggestion, setSuggestion] = useState("");
   const [cursorPosition, setCursorPosition] = useState({ row: 0, column: 0 });
-  const [suggestionPosition, setSuggestionPosition] = useState({
-    top: 0,
-    left: 0,
-  });
-  const aiSupportRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = async (e) => {
-      // Windows/Linux: Ctrl + S, Mac: Cmd + S
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault(); // 브라우저 기본 저장 동작 방지
+  const getLanguageFromExtension = (extension) => {
+    const languageMap = {
+      js: "javascript",
+      jsx: "javascript",
+      ts: "typescript",
+      tsx: "typescript",
+      py: "python",
+      html: "html",
+      css: "css",
+      json: "json",
+      md: "markdown",
+      txt: "text",
+    };
+    return languageMap[extension] || "text";
+  };
 
-        if (filePath) {
-          try {
-            const content = editorRef.current.editor.getValue();
-            await window.electronAPI.writeFile(filePath, content);
-            // 저장 성공 표시를 위한 상태 업데이트나 알림 추가 가능
-            console.log("File saved successfully");
-          } catch (error) {
-            console.error("Error saving file:", error);
+  const loadFileContent = async (filePath) => {
+    if (!filePath) return;
+    setIsLoading(true);
+
+    try {
+      const extension = filePath.split('.').pop().toLowerCase();
+      const language = getLanguageFromExtension(extension);
+      setEditorLanguage(language);
+
+      if (fileSource === 'github' && selectedRepo) {
+        const response = await axios.get(
+          "http://localhost:8000/users/api/file-content",
+          {
+            params: {
+              repo_name: selectedRepo,
+              file_path: filePath.replace(/^\//, '')
+            },
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('github_token')}`
+            }
           }
+        );
+
+        const content = typeof response.data === 'object' 
+          ? response.data.content || JSON.stringify(response.data, null, 2)
+          : String(response.data);
+        setEditorContent(content);
+      } else {
+        try {
+          const content = await window.electronAPI.readFile(filePath);
+          setEditorContent(String(content));
+        } catch (err) {
+          console.error(`Local file read error: ${err.message}`);
+          setEditorContent('');
+        }
+      }
+    } catch (error) {
+      console.error("File loading error:", error);
+      setEditorContent('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 초기화 및 파일 로딩
+  useEffect(() => {
+    const initializeEditor = async () => {
+      if (initialContent) {
+        setEditorContent(initialContent);
+      } else if (filePath) {
+        try {
+          await loadFileContent(filePath);
+        } catch (error) {
+          console.error("Failed to load file:", error);
         }
       }
     };
 
-    // 이벤트 리스너 등록
-    window.addEventListener("keydown", handleKeyDown);
-
-    // 컴포넌트 언마운트 시 이벤트 리스너 제거
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [filePath]); // filePath가 변경될 때마다 useEffect 재실행
-
-  useEffect(() => {
-    if (initialContent) {
-      setEditorContent(initialContent);
-    }
-  }, [initialContent]);
-
-  useEffect(() => {
-    if (filePath) {
-      loadFileContent(filePath);
-    }
-  }, [filePath]);
-
+    initializeEditor();
+  }, [filePath, initialContent, fileSource, selectedRepo]);
   // WebSocket 연결 설정
   useEffect(() => {
     console.log("웹소켓 연결 시도...");
-
     socketRef.current = new WebSocket("ws://localhost:8000/socket/ws");
 
     socketRef.current.onopen = () => {
@@ -212,13 +236,28 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
     };
   }, []);
 
-  // 메시지 전송 함수
-  const sendMessage = (message) => {
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(message));
-    }
-  };
+  // 키보드 단축키 핸들러
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (filePath) {
+          try {
+            const content = editorRef.current.editor.getValue();
+            await window.electronAPI.writeFile(filePath, content);
+            console.log("File saved successfully");
+          } catch (error) {
+            console.error("Error saving file:", error);
+          }
+        }
+      }
+    };
 
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [filePath]);
+
+  // 코드 변경 핸들러
   const handleCodeChange = (newContent) => {
     setEditorContent(newContent);
 
@@ -242,19 +281,18 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
     }, 500);
   };
 
+  // 제안 처리
   useEffect(() => {
     if (editorRef.current && suggestion) {
       const editor = editorRef.current.editor;
       const session = editor.getSession();
       const position = editor.getCursorPosition();
 
-      // 기존 마커 제거
       if (session.markerIds) {
         session.markerIds.forEach((id) => session.removeMarker(id));
       }
       session.markerIds = [];
 
-      // 새로운 마커 추가
       const marker = {
         type: "text",
         value: suggestion,
@@ -265,7 +303,6 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
       const markerId = session.addDynamicMarker(marker, true);
       session.markerIds = [...(session.markerIds || []), markerId];
 
-      // Tab 키 이벤트 핸들러 업데이트
       editor.commands.addCommand({
         name: "acceptSuggestion",
         bindKey: { win: "Tab", mac: "Tab" },
@@ -278,7 +315,6 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
               suggestion
             );
             const uniqueSuggestionPart = suggestion.slice(commonPrefixLength);
-
             session.insert(pos, uniqueSuggestionPart);
             setSuggestion("");
           }
@@ -286,57 +322,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
       });
     }
   }, [suggestion]);
-
-  const handleKeyDown = (event) => {
-    if (event.key === "Tab" && suggestion) {
-      event.preventDefault();
-
-      const editor = editorRef.current.editor;
-      const session = editor.getSession();
-      const position = editor.getCursorPosition();
-      const currentLine = session.getLine(position.row);
-
-      let commonPrefixLength = 0;
-      while (
-        commonPrefixLength < currentLine.length &&
-        commonPrefixLength < suggestion.length &&
-        currentLine[commonPrefixLength] === suggestion[commonPrefixLength]
-      ) {
-        commonPrefixLength++;
-      }
-
-      const uniqueSuggestionPart = suggestion.slice(commonPrefixLength);
-      session.insert(position, uniqueSuggestionPart);
-      setEditorContent(session.getValue());
-      setSuggestion("");
-      editor.focus();
-    }
-  };
-
-  const loadFileContent = async (path) => {
-    try {
-      const content = await window.electronAPI.readFile(path);
-      setEditorContent(content);
-      const language = getLanguageFromExtension(path.split(".").pop());
-      setEditorLanguage(language);
-    } catch (error) {
-      console.error("Error loading file:", error);
-    }
-  };
-
-  const getLanguageFromExtension = (extension) => {
-    const languageMap = {
-      js: "javascript",
-      py: "python",
-      html: "html",
-      css: "css",
-      json: "json",
-      md: "markdown",
-      txt: "text",
-    };
-    return languageMap[extension] || "text";
-  };
-
+  // 파일 저장 및 실행 관련 함수들
   const handleSave = async () => {
     if (filePath && editorRef.current) {
       try {
@@ -398,15 +384,20 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
   };
 
   const handleCodeApply = (newCode) => {
-    console.log("Editor에서 받은 새 코드:", newCode);
     if (newCode && editorRef.current) {
       try {
         setEditorContent(newCode);
         editorRef.current.editor.setValue(newCode, -1);
-        console.log("에디터 내용 업데이트 완료");
       } catch (error) {
         console.error("에디터 업데이트 중 오류:", error);
       }
+    }
+  };
+
+  // 메시지 전송 함수
+  const sendMessage = (message) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(message));
     }
   };
 
@@ -425,7 +416,7 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
       >
         <IoIosSave
           onClick={handleSave}
-          style={{ fontSize: "35px", color: "white" }}
+          style={{ fontSize: "35px", color: "white", cursor: "pointer" }}
         />
         {filePath && (
           <>
@@ -460,11 +451,10 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
           onCursorChange={(selection) => {
             setCursorPosition(selection.cursor);
           }}
-          onKeyDown={handleKeyDown}
           width="100%"
           height="100%"
           fontSize={14}
-          showPrintMargin={false} // 여기를 false로 변경
+          showPrintMargin={false}
           showGutter={true}
           highlightActiveLine={true}
           setOptions={{
@@ -486,16 +476,14 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
         {suggestion && (
           <SuggestionText
             style={{
-              top: `${(cursorPosition.row + 1) * 19}px`, // 18은 줄 높이
+              top: `${(cursorPosition.row + 1) * 19}px`,
               left: "40px",
-              width: openAiSupport ? "50%" : "100%", // AI Support가 열려있을 때 너비를 50%로 제한
-              whiteSpace: "pre-wrap", // 자동 개행 활성화
-              wordWrap: "break-word", // 단어 단위로 개행
+              width: openAiSupport ? "50%" : "100%",
+              whiteSpace: "pre-wrap",
+              wordWrap: "break-word",
             }}
           >
             {suggestion}
-            Suggestion 내용
-            {/* 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. 이것은 텍스트 코드입니다. */}
           </SuggestionText>
         )}
         {openAiSupport && (
@@ -507,10 +495,6 @@ const Editor = ({ filePath, terminalRef, initialContent }) => {
       </EditorFrame>
     </Container>
   );
-};
-
-Editor.defaultProps = {
-  terminalRef: { current: null },
 };
 
 export default Editor;

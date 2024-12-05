@@ -57,6 +57,7 @@ const App = ({  }) => {
   const [openHierarchy, setOpenHierarchy] = useState('0.1%');
   const [openCloneRepo, setOpenCloneRepo] = useState(false);
   const [openCommitModal, setOpenCommitModal] = useState(false);
+  const [currentContent, setCurrentContent] = useState("");
   const navigate = useNavigate();
   const terminalRef = useRef(null);
 
@@ -115,7 +116,7 @@ const App = ({  }) => {
   token={localStorage.getItem('github_token')}
   repoName={selectedRepo} // 이 값이 제대로 설정되어 있는지 확인 필요
   filePath={currentFile}
-  content={fileContent}
+  content={currentContent}
   isNewFile={false}
 />
 )}
@@ -184,6 +185,7 @@ const App = ({  }) => {
             selectedRepo={selectedRepo}
             terminalRef={terminalRef}
             initialContent={fileContent}
+            onContentChange={(newContent) => setCurrentContent(newContent)}
           />
         </EditorContainer>
         {/* <Resizable

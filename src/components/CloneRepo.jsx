@@ -180,43 +180,39 @@ const CloneRepo = ({ onClose }) => {
     }
   }, [token]);
 
-  const fetchUserRepos = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get(
-        "http://localhost:8000/users/api/user-repos",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+const fetchUserRepos = async () => {
+  setIsLoading(true);
+  try {
+    const response = await axios.get(
+      "http://localhost:8000/users/api/user-repos",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
-      );
-      
-      // 응답 데이터 구조 확인을 위한 로깅
-      console.log('Repository response:', response.data);
-      
-      // 데이터가 배열인지 확인하고 적절히 처리
-      const repoData = Array.isArray(response.data) 
-        ? response.data 
-        : response.data.repo_name || [];
-      
-      setRepos(repoData);
-    } catch (error) {
-      console.error("Error fetching repositories:", error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem("github_token");
-        navigate("/#/");
       }
-      setMessage({
-        text: "Failed to fetch repositories. Please check your connection.",
-        type: "error"
-      });
-      // 에러 발생 시 빈 배열로 초기화
-      setRepos([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    );
+    
+    // 응답 데이터 정규화
+    const repoData = Array.isArray(response.data) 
+      ? response.data.map(repo => ({
+          id: repo.id || `${repo.repo_name}-${Date.now()}`, // 고유 식별자 보장
+          repo_name: typeof repo === 'object' ? repo.repo_name : repo,
+          clone_url: repo.clone_url || ''
+        }))
+      : [response.data].map(repo => ({
+          id: repo.id || `${repo.repo_name}-${Date.now()}`,
+          repo_name: typeof repo === 'object' ? repo.repo_name : repo,
+          clone_url: repo.clone_url || ''
+        }));
+    
+    setRepos(repoData);
+  } catch (error) {
+    console.error("Error fetching repositories:", error);
+    // ... 에러 처리 ...
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleRepoSelect = (repoFullName) => {
     if (repoFullName) {

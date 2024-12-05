@@ -581,12 +581,18 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
         />
         {token && (
           <StyledSelect onChange={(e) => handleRepoSelect(e.target.value)}>
-            <option value="">select repo</option>
-            {Array.isArray(repos) && repos.map((repo) => (
-  <option key={repo.repo_name} value={repo.repo_name}>
-    {repo.repo_name}
-  </option>
-))}
+            <option key="default" value="">select repo</option>
+            {Array.isArray(repos) && repos.map((repo) => {
+              // repo가 객체가 아닌 경우를 위한 처리
+              const repoName = typeof repo === 'object' ? repo.repo_name : repo;
+              const uniqueKey = typeof repo === 'object' ? repo.id || repo.repo_name : repo;
+              
+              return (
+                <option key={uniqueKey} value={repoName}>
+                  {repoName}
+                </option>
+              );
+            })}
           </StyledSelect>
         )}
       </ButtonGroup>

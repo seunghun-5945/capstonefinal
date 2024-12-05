@@ -132,7 +132,6 @@ const CommitModal = ({
       return;
     }
   
-    // 필수 값 확인
     if (!token || !repoName || !filePath) {
       alert("필수 정보가 누락되었습니다:\n" + 
             `토큰: ${token ? "있음" : "없음"}\n` +
@@ -144,23 +143,36 @@ const CommitModal = ({
     setIsLoading(true);
     try {
       const endpoint = isNewFile
-        ? "http://localhost:8000/users/api/create-file"  // URL 수정
-        : "http://localhost:8000/users/api/update-file"; // URL 수정
-
+        ? "http://localhost:8000/users/api/create-file"
+        : "http://localhost:8000/users/api/update-file";
+  
       const requestBody = {
         token,
         repo_name: repoName,
-        file_path: filePath,
+        file_path: filePath.replace(/^\//, ''), // 앞쪽 슬래시 제거
         content: content || "",
         branch: "main",
-        commit_message: commitMessage
+        commit_message: commitMessage,
+        description: description || "", // 상세 설명 추가
+        committer: {
+          name: "GitHub Actions",
+          email: "actions@github.com"
+        }
       };
   
-      console.log('Sending request:', requestBody); // 디버깅용
-
-      const response = await axios.post(endpoint, requestBody);
+      console.log('Sending request:', {
+        ...requestBody,
+        token: '***', // 토큰 가리기
+      });
+  
+      const response = await axios.post(endpoint, requestBody, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      if (response.status === 200) {
+      if (response.status === 200 || response.status === 201) {
         alert("커밋이 완료되었습니다.");
         setCommitMessage("");
         setDescription("");
@@ -170,7 +182,11 @@ const CommitModal = ({
       console.error("Error committing changes:", error);
       if (error.response) {
         const errorDetail = error.response.data?.detail || error.response.data;
-        console.error("Error details:", errorDetail);  // 더 자세한 에러 정보 출력
+        console.error("Error details:", {
+          status: error.response.status,
+          data: errorDetail,
+          headers: error.response.headers
+        });
         alert(`커밋 중 오류가 발생했습니다:\n${JSON.stringify(errorDetail, null, 2)}`);
       } else {
         alert("커밋 중 오류가 발생했습니다.");
@@ -178,7 +194,7 @@ const CommitModal = ({
     } finally {
       setIsLoading(false);
     }
-};
+  };
 
   return (
     <>

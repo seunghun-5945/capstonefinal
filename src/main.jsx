@@ -4,6 +4,7 @@ import App from "./App";
 import "./index.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Callback from "./components/Callback";
+import Dashboard from "./components/DashBoard";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
@@ -11,6 +12,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/Callback" element={<Callback />} />
+        <Route path="/Dashboard" element={<Dashboard />} />
       </Routes>
     </React.StrictMode>
     ,

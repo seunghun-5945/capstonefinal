@@ -20,6 +20,7 @@ import styled from "styled-components";
 import VirtualEnvironmentSelector from "./VirtualEnvironmentSelector";
 import { PiArrowFatLineUpDuotone } from "react-icons/pi";
 
+
 const Container = styled.div`
   width: 100%;
   height: 100vh;
@@ -481,7 +482,7 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
           ? response.data.content || JSON.stringify(response.data) 
           : String(response.data);
   
-        onFileSelect(file.path);
+        onFileSelect(file.path, fileSource, selectedRepo);
         onFileContentChange(content);
         
       } else if (fileSource === "local" && !file.isDirectory) {

@@ -28,6 +28,7 @@ import { IoIosSave } from "react-icons/io";
 import { VscRunAll } from "react-icons/vsc";
 import { TiMediaStop } from "react-icons/ti";
 import { IoChatboxEllipsesOutline } from "react-icons/io5";
+import { useNavigate } from "react-router-dom";
 
 // ace 설정
 ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12');
@@ -122,6 +123,7 @@ const Editor = ({
   const [suggestion, setSuggestion] = useState("");
   const [cursorPosition, setCursorPosition] = useState({ row: 0, column: 0 });
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const getLanguageFromExtension = (extension) => {
     const languageMap = {
@@ -326,6 +328,7 @@ const Editor = ({
   const handleSave = async () => {
     if (filePath && editorRef.current) {
       try {
+        navigate('/Dashboard');
         const content = editorRef.current.editor.getValue();
         await window.electronAPI.writeFile(filePath, content);
         return true;

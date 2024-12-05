@@ -11,6 +11,7 @@ import { Resizable } from "re-resizable";
 import { FaRegClone } from "react-icons/fa";
 import CloneRepo from "./components/CloneRepo";
 import { useNavigate } from "react-router-dom";
+import CommitModal from "./components/CommitModal";
 
 const Container = styled.div`
   width: 100%;
@@ -55,6 +56,7 @@ const App = ({  }) => {
   const [selectedRepo, setSelectedRepo] = useState(""); // 추가: 선택된 레포지토리 상태
   const [openHierarchy, setOpenHierarchy] = useState('0.1%');
   const [openCloneRepo, setOpenCloneRepo] = useState(false);
+  const [openCommitModal, setOpenCommitModal] = useState(false);
   const navigate = useNavigate();
   const terminalRef = useRef(null);
 
@@ -68,9 +70,13 @@ const App = ({  }) => {
   };
 
   // FileExplorer에서 파일 선택 시 호출되는 핸들러
-  const handleFileSelect = (filePath, source) => {
+  const handleFileSelect = (filePath, source, repo) => {
     setCurrentFile(filePath);
     setFileSource(source);
+    if (repo) {
+      console.log("Setting repo:", repo); // 디버깅용
+      setSelectedRepo(repo);
+    }
   };
 
   const handleFileContentChange = (content) => {
@@ -92,11 +98,26 @@ const App = ({  }) => {
     setOpenCloneRepo(!openCloneRepo);
   }
 
+  const handleOpenCommitModal = () => {
+    setOpenCommitModal(!openCommitModal);
+  }
+
   return (
     <Container>
-      {openCloneRepo && (
-        <CloneRepo onClose={() => setOpenCloneRepo(false)} />
-      )}
+{openCloneRepo && (
+  <CloneRepo onClose={() => setOpenCloneRepo(false)} />
+)}
+{openCommitModal && (
+  <CommitModal 
+  isOpen={openCommitModal}
+  onClose={() => setOpenCommitModal(false)}
+  token={localStorage.getItem('github_token')}
+  repoName={selectedRepo} // 이 값이 제대로 설정되어 있는지 확인 필요
+  filePath={currentFile}
+  content={fileContent}
+  isNewFile={false}
+/>
+)}
       <SideMenuBar>
         <FaGithub 
           onClick={handleLogin}
@@ -107,6 +128,7 @@ const App = ({  }) => {
           style={{marginTop:"50px", cursor:"pointer", color:"white"}}
         />
         <VscSourceControl 
+          onClick={handleOpenCommitModal}
           style={{marginTop:"50px", cursor:"pointer", color:"white"}}
         />
         <IoTerminal 

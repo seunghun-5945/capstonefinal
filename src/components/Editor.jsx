@@ -40,6 +40,43 @@ const Container = styled.div`
   flex-direction: column;
 `;
 
+// 스타일 컴포넌트 추가
+const SuggestionTooltip = styled.div`
+  position: absolute;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 13px;
+  border: 1px solid #404040;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-width: 400px;
+  white-space: pre-wrap;
+  word-break: break-all;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 10px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #404040;
+  }
+
+  .shortcut {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #404040;
+    font-size: 11px;
+    color: #888;
+  }
+`;
+
 const MenuBar = styled.div`
   width: 100%;
   height: 10%;
@@ -212,8 +249,14 @@ const Editor = ({
     socketRef.current.onmessage = (event) => {
       try {
         const suggestionText = event.data;
-        console.log("코드 제안 받음:", suggestionText);
-        setSuggestion(suggestionText);
+        // "제안할 코드:" 라인과 모든 언어 식별자 라인을 제거
+        const cleanedText = suggestionText
+          .replace(/코드 변경 감지:.*\n/g, "") // "코드 변경 감지" 라인 제거
+          .replace(/제안할 코드:.*\n/g, "") // "제안할 코드:" 라인 제거
+          .replace(/^\w+\n/gm, "") // 언어 식별자 라인 제거 (예: python, javascript 등)
+          .trim();
+        console.log("코드 제안 받음:", cleanedText);
+        setSuggestion(cleanedText);
       } catch (error) {
         console.error("메시지 파싱 에러:", error);
       }
@@ -271,58 +314,70 @@ const Editor = ({
         const editor = editorRef.current.editor;
         const position = editor.getCursorPosition();
         const session = editor.getSession();
-        const currentLine = session.getLine(position.row);
+
+        // 현재 라인에서 커서 위치까지만의 텍스트를 가져옴
+        const currentLine = session
+          .getLine(position.row)
+          .substring(0, position.column);
 
         sendMessage({
           code: newContent,
-          line: currentLine,
+          line: currentLine, // 커서 위치까지만의 텍스트를 전송
           position: position,
+          type: "suggestion",
         });
       }
     }, 500);
   };
 
-  // 제안 처리
+  // useEffect 내의 제안 처리 로직 수정
   useEffect(() => {
     if (editorRef.current && suggestion) {
       const editor = editorRef.current.editor;
       const session = editor.getSession();
       const position = editor.getCursorPosition();
 
-      if (session.markerIds) {
-        session.markerIds.forEach((id) => session.removeMarker(id));
-      }
-      session.markerIds = [];
+      // 현재 라인 정보 가져오기
+      const currentLine = session.getLine(position.row);
 
-      const marker = {
-        type: "text",
-        value: suggestion,
-        position: position,
-        inFront: true,
-      };
-
-      const markerId = session.addDynamicMarker(marker, true);
-      session.markerIds = [...(session.markerIds || []), markerId];
-
+      // 제안 수락 명령어 (Tab)
       editor.commands.addCommand({
         name: "acceptSuggestion",
         bindKey: { win: "Tab", mac: "Tab" },
         exec: function (editor) {
           if (suggestion) {
-            const pos = editor.getCursorPosition();
-            const currentLine = session.getLine(pos.row);
-            const commonPrefixLength = getCommonPrefixLength(
-              currentLine,
-              suggestion
+            // 현재 라인의 시작과 끝 위치
+            const range = new ace.Range(
+              position.row, // 시작 행
+              0, // 시작 열 (라인의 처음)
+              position.row, // 끝 행
+              currentLine.length // 끝 열 (라인의 끝)
             );
-            const uniqueSuggestionPart = suggestion.slice(commonPrefixLength);
-            session.insert(pos, uniqueSuggestionPart);
+
+            // 현재 라인을 제안된 코드로 완전히 교체
+            editor.session.replace(range, suggestion);
+
+            // 커서를 새로운 코드의 끝으로 이동
+            editor.moveCursorTo(position.row, suggestion.length);
+
             setSuggestion("");
+            return true;
           }
+        },
+      });
+
+      // 제안 취소 명령어 (ESC)
+      editor.commands.addCommand({
+        name: "cancelSuggestion",
+        bindKey: { win: "Esc", mac: "Esc" },
+        exec: function () {
+          setSuggestion("");
+          return true;
         },
       });
     }
   }, [suggestion]);
+
   // 파일 저장 및 실행 관련 함수들
   const handleSave = async () => {
     if (filePath && editorRef.current) {
@@ -391,7 +446,24 @@ const Editor = ({
     const session = editor.getSession();
     const doc = session.getDocument();
 
-    // 스타일 컴포넌트 파싱
+    // 현재 에디터의 내용이 비어있는지 확인
+    const currentContent = editor.getValue().trim();
+
+    // 빈 파일이거나 코드가 없는 경우 새 코드를 전체 삽입
+    if (!currentContent) {
+      try {
+        // 새 코드 삽입
+        editor.setValue(newCode, -1); // -1은 커서를 처음으로 이동
+        setEditorContent(newCode);
+        console.log("새 코드가 빈 파일에 적용되었습니다.");
+        return;
+      } catch (error) {
+        console.error("새 코드 적용 중 오류:", error);
+        return;
+      }
+    }
+
+    // 기존 코드가 있는 경우의 처리 로직
     const parseStyledComponents = (code) => {
       const components = {};
       const regex = /const\s+(\w+)\s*=\s*styled\.[^`]*`([^`]*)`/g;
@@ -556,17 +628,17 @@ const Editor = ({
           }}
         />
         {suggestion && (
-          <SuggestionText
+          <SuggestionTooltip
             style={{
-              top: `${(cursorPosition.row + 1) * 19}px`,
-              left: "40px",
-              width: openAiSupport ? "50%" : "100%",
-              whiteSpace: "pre-wrap",
-              wordWrap: "break-word",
+              top: `${(cursorPosition.row + 1.5) * 19}px`,
+              left: "40px", // 항상 라인의 시작 부분에 표시
             }}
           >
-            {suggestion}
-          </SuggestionText>
+            <div>{suggestion}</div>
+            <div className="shortcut">
+              Press Tab to replace line • Esc to cancel
+            </div>
+          </SuggestionTooltip>
         )}
         {openAiSupport && (
           <AiSupport

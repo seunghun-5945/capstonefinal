@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 const Container = styled.div`
   width: 50%;
-  height: 75%;
+  height: 50%;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -191,7 +191,16 @@ const CloneRepo = ({ onClose }) => {
           }
         }
       );
-      setRepos(response.data);
+      
+      // 응답 데이터 구조 확인을 위한 로깅
+      console.log('Repository response:', response.data);
+      
+      // 데이터가 배열인지 확인하고 적절히 처리
+      const repoData = Array.isArray(response.data) 
+        ? response.data 
+        : response.data.repo_name || [];
+      
+      setRepos(repoData);
     } catch (error) {
       console.error("Error fetching repositories:", error);
       if (error.response?.status === 401) {
@@ -202,6 +211,8 @@ const CloneRepo = ({ onClose }) => {
         text: "Failed to fetch repositories. Please check your connection.",
         type: "error"
       });
+      // 에러 발생 시 빈 배열로 초기화
+      setRepos([]);
     } finally {
       setIsLoading(false);
     }
@@ -209,8 +220,12 @@ const CloneRepo = ({ onClose }) => {
 
   const handleRepoSelect = (repoFullName) => {
     if (repoFullName) {
-      setRepoUrl(`https://github.com/${repoFullName}.git`);
-      setSelectedRepo(repoFullName);
+      // 선택된 레포지토리의 clone_url을 찾습니다
+      const selectedRepo = repos.find(repo => repo.repo_name === repoFullName);
+      if (selectedRepo) {
+        setRepoUrl(selectedRepo.clone_url);  // clone_url을 사용
+        setSelectedRepo(repoFullName);
+      }
     } else {
       setRepoUrl("");
       setSelectedRepo("");
@@ -300,17 +315,17 @@ const CloneRepo = ({ onClose }) => {
         <FormGroup>
           <Label>Select Repository:</Label>
           <StyledSelect
-            value={selectedRepo}
-            onChange={(e) => handleRepoSelect(e.target.value)}
-            disabled={isLoading}
-          >
-            <option value="">Select a repository or enter URL manually</option>
-            {repos.map((repo) => (
-              <option key={repo} value={repo}>
-                {repo}
-              </option>
-            ))}
-          </StyledSelect>
+  value={selectedRepo}
+  onChange={(e) => handleRepoSelect(e.target.value)}
+  disabled={isLoading}
+>
+  <option value="">Select a repository or enter URL manually</option>
+  {Array.isArray(repos) && repos.map((repo) => (
+    <option key={repo.repo_name} value={repo.repo_name}>
+      {repo.repo_name}
+    </option>
+  ))}
+</StyledSelect>
         </FormGroup>
 
         <FormGroup>

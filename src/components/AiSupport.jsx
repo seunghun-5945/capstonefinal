@@ -262,8 +262,10 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
           );
 
           if (!response.ok) throw new Error("코드 분석 실패");
-          const changes = await response.json();
-          onCodeApply(code, changes.changes);
+          const data = await response.json();
+
+          // changes 객체와 함께 코드 전달
+          onCodeApply(code, data.changes);
         } catch (error) {
           console.error("코드 적용 중 오류:", error);
         }

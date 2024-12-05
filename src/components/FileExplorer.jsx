@@ -383,13 +383,24 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
         "http://localhost:8000/users/api/user-repos",
         { headers }
       );
-      setRepos(response.data);
+      
+      // 응답 데이터 구조 확인을 위한 로깅
+      console.log('Repository response:', response.data);
+      
+      // 데이터가 배열인지 확인하고 적절히 처리
+      const repoData = Array.isArray(response.data) 
+        ? response.data 
+        : response.data.repo_name || [];
+      
+      setRepos(repoData);
     } catch (error) {
       console.error("Error fetching user repos:", error);
       if (error.response?.status === 401) {
         localStorage.removeItem("github_token");
         navigate("/#/");
       }
+      // 에러 발생 시 빈 배열로 초기화
+      setRepos([]);
     }
   };
 
@@ -571,11 +582,11 @@ const FileExplorer = ({ onFileSelect, onFileContentChange }) => {
         {token && (
           <StyledSelect onChange={(e) => handleRepoSelect(e.target.value)}>
             <option value="">select repo</option>
-            {repos.map((repo) => (
-              <option key={repo} value={repo}>
-                {repo}
-              </option>
-            ))}
+            {Array.isArray(repos) && repos.map((repo) => (
+  <option key={repo.repo_name} value={repo.repo_name}>
+    {repo.repo_name}
+  </option>
+))}
           </StyledSelect>
         )}
       </ButtonGroup>

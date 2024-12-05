@@ -3,7 +3,7 @@ import styled from "styled-components";
 import AceEditor from "react-ace";
 import AiSupport from "./AiSupport";
 import axios from "axios";
-import ace from 'ace-builds';
+import ace from "ace-builds";
 
 // Ace Editor 테마와 언어 모드 import
 import "ace-builds/src-noconflict/mode-javascript";
@@ -28,10 +28,9 @@ import { IoIosSave } from "react-icons/io";
 import { VscRunAll } from "react-icons/vsc";
 import { TiMediaStop } from "react-icons/ti";
 import { IoChatboxEllipsesOutline } from "react-icons/io5";
-import { useNavigate } from "react-router-dom";
 
 // ace 설정
-ace.config.set('basePath', 'https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12');
+ace.config.set("basePath", "https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12");
 
 // Styled Components
 const Container = styled.div`
@@ -104,13 +103,13 @@ const getCommonPrefixLength = (str1, str2) => {
   return i;
 };
 
-const Editor = ({  
-    filePath = '', 
-    fileSource = 'local',
-    selectedRepo = '',
-    terminalRef = { current: null },
-    initialContent = ''  
-  }) => {
+const Editor = ({
+  filePath = "",
+  fileSource = "local",
+  selectedRepo = "",
+  terminalRef = { current: null },
+  initialContent = "",
+}) => {
   const editorRef = useRef(null);
   const [editorContent, setEditorContent] = useState("");
   const [editorLanguage, setEditorLanguage] = useState("javascript");
@@ -123,7 +122,6 @@ const Editor = ({
   const [suggestion, setSuggestion] = useState("");
   const [cursorPosition, setCursorPosition] = useState({ row: 0, column: 0 });
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const getLanguageFromExtension = (extension) => {
     const languageMap = {
@@ -146,27 +144,28 @@ const Editor = ({
     setIsLoading(true);
 
     try {
-      const extension = filePath.split('.').pop().toLowerCase();
+      const extension = filePath.split(".").pop().toLowerCase();
       const language = getLanguageFromExtension(extension);
       setEditorLanguage(language);
 
-      if (fileSource === 'github' && selectedRepo) {
+      if (fileSource === "github" && selectedRepo) {
         const response = await axios.get(
           "http://localhost:8000/users/api/file-content",
           {
             params: {
               repo_name: selectedRepo,
-              file_path: filePath.replace(/^\//, '')
+              file_path: filePath.replace(/^\//, ""),
             },
             headers: {
-              Authorization: `Bearer ${localStorage.getItem('github_token')}`
-            }
+              Authorization: `Bearer ${localStorage.getItem("github_token")}`,
+            },
           }
         );
 
-        const content = typeof response.data === 'object' 
-          ? response.data.content || JSON.stringify(response.data, null, 2)
-          : String(response.data);
+        const content =
+          typeof response.data === "object"
+            ? response.data.content || JSON.stringify(response.data, null, 2)
+            : String(response.data);
         setEditorContent(content);
       } else {
         try {
@@ -174,12 +173,12 @@ const Editor = ({
           setEditorContent(String(content));
         } catch (err) {
           console.error(`Local file read error: ${err.message}`);
-          setEditorContent('');
+          setEditorContent("");
         }
       }
     } catch (error) {
       console.error("File loading error:", error);
-      setEditorContent('');
+      setEditorContent("");
     } finally {
       setIsLoading(false);
     }
@@ -328,7 +327,6 @@ const Editor = ({
   const handleSave = async () => {
     if (filePath && editorRef.current) {
       try {
-        navigate('/Dashboard');
         const content = editorRef.current.editor.getValue();
         await window.electronAPI.writeFile(filePath, content);
         return true;
@@ -386,14 +384,95 @@ const Editor = ({
     setOpenAiSupport(!openAiSupport);
   };
 
-  const handleCodeApply = (newCode) => {
-    if (newCode && editorRef.current) {
-      try {
-        setEditorContent(newCode);
-        editorRef.current.editor.setValue(newCode, -1);
-      } catch (error) {
-        console.error("에디터 업데이트 중 오류:", error);
+  const handleCodeApply = (newCode, changes) => {
+    if (!newCode || !editorRef.current) return;
+
+    const editor = editorRef.current.editor;
+    const session = editor.getSession();
+    const doc = session.getDocument();
+
+    // 스타일 컴포넌트 파싱
+    const parseStyledComponents = (code) => {
+      const components = {};
+      const regex = /const\s+(\w+)\s*=\s*styled\.[^`]*`([^`]*)`/g;
+      let match;
+
+      while ((match = regex.exec(code)) !== null) {
+        const [_, componentName, styles] = match;
+        components[componentName] = styles
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line && line.includes(":"));
       }
+
+      return components;
+    };
+
+    // 현재 코드와 새 코드의 스타일 컴포넌트 파싱
+    const currentComponents = parseStyledComponents(editor.getValue());
+    const newComponents = parseStyledComponents(newCode);
+
+    // 스타일 컴포넌트 위치 찾기
+    const findComponentPosition = (componentName) => {
+      const lines = doc.getAllLines();
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith(`const ${componentName} = styled.`)) {
+          let endLine = i;
+          while (endLine < lines.length && !lines[endLine].includes("`;")) {
+            endLine++;
+          }
+          return { start: i, end: endLine };
+        }
+      }
+      return null;
+    };
+
+    // 변경사항 적용
+    const applyChanges = (componentName, currentStyles, newStyles) => {
+      const position = findComponentPosition(componentName);
+      if (!position) return;
+
+      const currentStyleSet = new Set(currentStyles);
+      const newStyleSet = new Set(newStyles);
+
+      // 추가/수정될 스타일 찾기
+      const stylesToAdd = newStyles.filter((style) => {
+        const styleProp = style.split(":")[0].trim();
+        const existingStyle = [...currentStyleSet].find((current) =>
+          current.startsWith(styleProp + ":")
+        );
+        return !existingStyle || existingStyle !== style;
+      });
+
+      if (stylesToAdd.length > 0) {
+        // 마지막 속성 앞에 새로운 스타일 추가
+        const insertPosition = position.end - 1;
+        const newContent =
+          stylesToAdd.map((style) => `  ${style}`).join("\n") + "\n";
+
+        session.insert({ row: insertPosition, column: 0 }, newContent);
+
+        console.log(`${componentName} 컴포넌트 업데이트됨:`, stylesToAdd);
+      }
+    };
+
+    try {
+      // 모든 컴포넌트의 변경사항 처리
+      Object.keys(newComponents).forEach((componentName) => {
+        if (currentComponents[componentName]) {
+          applyChanges(
+            componentName,
+            currentComponents[componentName],
+            newComponents[componentName]
+          );
+        }
+      });
+
+      // 에디터 상태 업데이트
+      setEditorContent(editor.getValue());
+    } catch (error) {
+      console.error("코드 적용 중 오류:", error);
     }
   };
 

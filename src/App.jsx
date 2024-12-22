@@ -48,18 +48,20 @@ const EditorContainer = styled.div`
   height: ${props => props.terminalOpen ? 'calc(70vh)' : '100%'};
 `;
 
-const App = ({  }) => {
+const App = () => {
   const [currentFile, setCurrentFile] = useState(null);
   const [fileContent, setFileContent] = useState("");
-  const [fileSource, setFileSource] = useState("local"); // 추가: 파일 소스 상태
+  const [fileSource, setFileSource] = useState("local");
   const [openTerminal, setOpenTerminal] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState(""); // 추가: 선택된 레포지토리 상태
+  const [selectedRepo, setSelectedRepo] = useState("");
   const [openHierarchy, setOpenHierarchy] = useState('0.1%');
   const [openCloneRepo, setOpenCloneRepo] = useState(false);
   const [openCommitModal, setOpenCommitModal] = useState(false);
+  // const [editorContent, setEditorContent] = useState(""); // 새로운 상태 추가
   const [currentContent, setCurrentContent] = useState("");
   const navigate = useNavigate();
   const terminalRef = useRef(null);
+  const terminalReadyRef = useRef(false);
 
   const handleHierarchy = () => {
     if(openHierarchy === '0.1%') {
@@ -103,6 +105,54 @@ const App = ({  }) => {
   const handleOpenCommitModal = () => {
     setOpenCommitModal(!openCommitModal);
   }
+
+  // 터미널 준비 상태를 체크하는 함수
+  const checkTerminalReady = () => {
+    return new Promise((resolve) => {
+      const check = () => {
+        if (terminalRef.current && terminalRef.current.executeCommandFromExternal) {
+          terminalReadyRef.current = true;
+          resolve();
+        } else {
+          setTimeout(check, 100);
+        }
+      };
+      check();
+    });
+  };
+
+  const handleRunWithTerminal = async (runCallback) => {
+    console.log("Starting run with terminal...");
+    if (!openTerminal) {
+      console.log("Opening terminal...");
+      setOpenTerminal(true);
+      
+      // 터미널이 마운트될 때까지 기다림
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log("Terminal mount wait complete");
+    }
+
+    // 터미널이 준비될 때까지 계속 체크 (최대 5초)
+    let attempts = 0;
+    while (!terminalReadyRef.current && attempts < 50) {
+      console.log(`Checking terminal ready (attempt ${attempts + 1})...`);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (terminalRef.current?.executeCommandFromExternal) {
+        terminalReadyRef.current = true;
+        console.log("Terminal is ready!");
+        break;
+      }
+      attempts++;
+    }
+
+    // 터미널이 준비되었는지 최종 확인
+    if (terminalReadyRef.current && terminalRef.current?.executeCommandFromExternal) {
+      console.log("Executing command...");
+      runCallback();
+    } else {
+      console.warn("Terminal failed to initialize after timeout");
+    }
+  };
 
   return (
     <Container>
@@ -178,7 +228,7 @@ const App = ({  }) => {
       </Resizable>
 
       <Frame>
-        <EditorContainer>
+      <EditorContainer terminalOpen={openTerminal}>
           <Editor
             filePath={currentFile}
             fileSource={fileSource}
@@ -186,6 +236,7 @@ const App = ({  }) => {
             terminalRef={terminalRef}
             initialContent={fileContent}
             onContentChange={(newContent) => setCurrentContent(newContent)}
+            onRunCode={handleRunWithTerminal}
           />
         </EditorContainer>
         {/* <Resizable
@@ -223,11 +274,14 @@ const App = ({  }) => {
             zIndex: 10
           }}
         >
-        <Terminal
-          onRef={(ref) => {
-            terminalRef.current = ref;
-          }}
-        />
+            <Terminal
+              onRef={(ref) => {
+                terminalRef.current = ref;
+                if (ref && ref.executeCommandFromExternal) {
+                  terminalReadyRef.current = true;
+                }
+              }}
+            />
         </Resizable>
         }
 

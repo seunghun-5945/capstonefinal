@@ -247,6 +247,7 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
       const code = extractCodeFromMessage(messageText);
       if (code) {
         try {
+          // 서버에 코드 변경 분석 요청
           const response = await fetch(
             "http://localhost:8000/api/analyze-code-changes",
             {
@@ -264,11 +265,28 @@ const AiSupport = ({ onCodeApply, currentCode }) => {
           if (!response.ok) throw new Error("코드 분석 실패");
           const data = await response.json();
 
-          // changes 객체와 함께 코드 전달
+          // 변경된 코드를 에디터에 적용
           onCodeApply(code, data.changes);
+          
+          // 성공 메시지 표시
+          setMessages(prev => [...prev, {
+            text: "코드가 성공적으로 적용되었습니다.",
+            isUser: false
+          }]);
         } catch (error) {
           console.error("코드 적용 중 오류:", error);
+          // 에러 메시지 표시
+          setMessages(prev => [...prev, {
+            text: `코드 적용 중 오류가 발생했습니다: ${error.message}`,
+            isUser: false
+          }]);
         }
+      } else {
+        // 코드 추출 실패 시 메시지 표시
+        setMessages(prev => [...prev, {
+          text: "메시지에서 적용할 코드를 찾을 수 없습니다.",
+          isUser: false
+        }]);
       }
     }
   };

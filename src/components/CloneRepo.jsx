@@ -180,46 +180,39 @@ const CloneRepo = ({ onClose }) => {
     }
   }, [token]);
 
-const fetchUserRepos = async () => {
-  setIsLoading(true);
-  try {
-    const response = await axios.get(
-      "http://localhost:8000/users/api/user-repos",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
+  const fetchUserRepos = async () => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(
+        "http://localhost:8000/users/api/user-repos",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      }
-    );
-    
-    // 응답 데이터 정규화
-    const repoData = Array.isArray(response.data) 
-      ? response.data.map(repo => ({
-          id: repo.id || `${repo.repo_name}-${Date.now()}`, // 고유 식별자 보장
-          repo_name: typeof repo === 'object' ? repo.repo_name : repo,
-          clone_url: repo.clone_url || ''
-        }))
-      : [response.data].map(repo => ({
-          id: repo.id || `${repo.repo_name}-${Date.now()}`,
-          repo_name: typeof repo === 'object' ? repo.repo_name : repo,
-          clone_url: repo.clone_url || ''
-        }));
-    
-    setRepos(repoData);
-  } catch (error) {
-    console.error("Error fetching repositories:", error);
-    // ... 에러 처리 ...
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+      );
+      
+      console.log('API Response:', response.data);
+      // API 응답을 그대로 사용
+      setRepos(response.data);
+    } catch (error) {
+      console.error("Error fetching repositories:", error);
+      setRepos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const handleRepoSelect = (repoFullName) => {
+    console.log('Selected repo name:', repoFullName);
+    
     if (repoFullName) {
-      // 선택된 레포지토리의 clone_url을 찾습니다
       const selectedRepo = repos.find(repo => repo.repo_name === repoFullName);
+      console.log('Found repo:', selectedRepo);
+      
       if (selectedRepo) {
-        setRepoUrl(selectedRepo.clone_url);  // clone_url을 사용
+        // API에서 받은 clone_url을 직접 사용
+        setRepoUrl(selectedRepo.clone_url);
         setSelectedRepo(repoFullName);
       }
     } else {
@@ -311,17 +304,20 @@ const fetchUserRepos = async () => {
         <FormGroup>
           <Label>Select Repository:</Label>
           <StyledSelect
-  value={selectedRepo}
-  onChange={(e) => handleRepoSelect(e.target.value)}
-  disabled={isLoading}
->
-  <option value="">Select a repository or enter URL manually</option>
-  {Array.isArray(repos) && repos.map((repo) => (
-    <option key={repo.repo_name} value={repo.repo_name}>
-      {repo.repo_name}
-    </option>
-  ))}
-</StyledSelect>
+            value={selectedRepo}
+            onChange={(e) => handleRepoSelect(e.target.value)}
+            disabled={isLoading}
+          >
+            <option key="default" value="">Select a repository or enter URL manually</option>
+            {Array.isArray(repos) && repos.map((repo) => (
+              <option 
+                key={repo.id || `${repo.repo_name}-${Date.now()}`} 
+                value={repo.repo_name}
+              >
+                {repo.repo_name}
+              </option>
+            ))}
+          </StyledSelect>
         </FormGroup>
 
         <FormGroup>

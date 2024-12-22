@@ -4,6 +4,7 @@ import AceEditor from "react-ace";
 import AiSupport from "./AiSupport";
 import axios from "axios";
 import ace from "ace-builds";
+import CommitModal from "./CommitModal";
 
 // Ace Editor 테마와 언어 모드 import
 import "ace-builds/src-noconflict/mode-javascript";
@@ -188,6 +189,8 @@ const Editor = ({
   selectedRepo = "",
   terminalRef = { current: null },
   initialContent = "",
+  onContentChange,
+  onRunCode, // 새로운 prop 추가
 }) => {
   const editorRef = useRef(null);
   const [editorContent, setEditorContent] = useState("");
@@ -203,6 +206,9 @@ const Editor = ({
   const [annotations, setAnnotations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [showCommitModal, setShowCommitModal] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState("");
+
 
   const getLanguageFromExtension = (extension) => {
     const languageMap = {
@@ -223,18 +229,7 @@ const Editor = ({
     };
     return languageMap[extension] || "text";
   };
-
-  useEffect(() => {
-    // 파일 경로가 있으면 확장자로 언어 설정
-    if (filePath) {
-      const extension = filePath.split(".").pop().toLowerCase();
-      const language = getLanguageFromExtension(extension);
-      setEditorLanguage(language);
-    } else {
-      // 기본값으로 javascript 설정
-      setEditorLanguage("javascript");
-    }
-  }, [filePath]);
+  
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -385,18 +380,26 @@ const Editor = ({
     };
   }, []);
 
-  // 키보드 단축키 핸들러
+  // 키보드 단축키 핸들러 수정
   useEffect(() => {
     const handleKeyDown = async (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
         if (filePath) {
-          try {
-            const content = editorRef.current.editor.getValue();
-            await window.electronAPI.writeFile(filePath, content);
-            console.log("File saved successfully");
-          } catch (error) {
-            console.error("Error saving file:", error);
+          if (fileSource === "github") {
+            // GitHub 파일인 경우 커밋 모달 표시
+            const newContent = editorRef.current.editor.getValue();
+            setPendingChanges(newContent);
+            setShowCommitModal(true);
+          } else {
+            // 로컬 파일인 경우 기존 저장 로직 실행
+            try {
+              const content = editorRef.current.editor.getValue();
+              await window.electronAPI.writeFile(filePath, content);
+              console.log("File saved successfully");
+            } catch (error) {
+              console.error("Error saving file:", error);
+            }
           }
         }
       }
@@ -404,15 +407,16 @@ const Editor = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filePath]);
+  }, [filePath, fileSource]);
+
 
 // 코드 변경 핸들러
 const handleCodeChange = (newContent) => {
   setEditorContent(newContent);
-
-  if (debounceTimerRef.current) {
-    clearTimeout(debounceTimerRef.current);
+  if (onContentChange) {
+    onContentChange(newContent);
   }
+
 
   debounceTimerRef.current = setTimeout(() => {
     if (editorRef.current) {
@@ -496,9 +500,10 @@ useEffect(() => {
     return false;
   };
 
+
   const handleRunCode = async () => {
-    if (!filePath || !terminalRef?.current?.executeCommandFromExternal) {
-      console.warn("Terminal or file not ready");
+    if (!filePath) {
+      console.warn("No file selected");
       return;
     }
 
@@ -518,9 +523,19 @@ useEffect(() => {
     }
 
     const saveSuccess = await handleSave();
-    if (saveSuccess) {
+    if (saveSuccess && onRunCode) {
+      // 먼저 isRunning 상태를 true로 설정
       setIsRunning(true);
-      terminalRef.current.executeCommandFromExternal(command);
+      
+      // onRunCode를 호출하고 Promise가 resolve될 때까지 기다림
+      await new Promise((resolve) => {
+        onRunCode(() => {
+          if (terminalRef?.current?.executeCommandFromExternal) {
+            terminalRef.current.executeCommandFromExternal(command);
+            resolve();
+          }
+        });
+      });
     }
   };
 
@@ -546,24 +561,25 @@ useEffect(() => {
     if (!newCode || !editorRef.current) return;
 
     const editor = editorRef.current.editor;
-    const session = editor.getSession();
-    const doc = session.getDocument();
-
-    // 현재 에디터의 내용이 비어있는지 확인
-    const currentContent = editor.getValue().trim();
-
-    // 빈 파일이거나 코드가 없는 경우 새 코드를 전체 삽입
-    if (!currentContent) {
-      try {
-        // 새 코드 삽입
-        editor.setValue(newCode, -1); // -1은 커서를 처음으로 이동
-        setEditorContent(newCode);
-        console.log("새 코드가 빈 파일에 적용되었습니다.");
-        return;
-      } catch (error) {
-        console.error("새 코드 적용 중 오류:", error);
-        return;
+    
+    try {
+      // 새 코드를 에디터에 직접 설정
+      editor.setValue(newCode, -1); // -1은 커서를 처음으로 이동
+      setEditorContent(newCode);
+      
+      // onContentChange 콜백 호출
+      if (onContentChange) {
+        onContentChange(newCode);
       }
+      
+      // 커서를 처음으로 이동
+      editor.clearSelection();
+      editor.moveCursorTo(0, 0);
+
+      console.log("코드가 성공적으로 적용되었습니다.");
+      
+    } catch (error) {
+      console.error("코드 적용 중 오류:", error);
     }
 
     // 기존 코드가 있는 경우의 처리 로직
@@ -763,6 +779,17 @@ useEffect(() => {
           />
         )}
       </EditorFrame>
+      {showCommitModal && (
+        <CommitModal
+          isOpen={showCommitModal}
+          onClose={() => setShowCommitModal(false)}
+          token={localStorage.getItem('github_token')}
+          repoName={selectedRepo}
+          filePath={filePath}
+          content={pendingChanges}
+          editorContent={pendingChanges}
+        />
+      )}
     </Container>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import axios from "axios";
 
@@ -118,11 +118,19 @@ const CommitModal = ({
   filePath,
   content,
   isNewFile = false,
+  editorContent = "", // 새로운 prop 추가
 }) => {
   console.log("Received props:", { repoName, filePath }); // 디버깅용
   const [commitMessage, setCommitMessage] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentContent, setCurrentContent] = useState("");
+
+  useEffect(() => {
+    if (editorContent) {
+      setCurrentContent(editorContent);
+    }
+  }, [editorContent]);
 
   if (!isOpen) return null;
 
@@ -150,7 +158,7 @@ const CommitModal = ({
         token,
         repo_name: repoName,
         file_path: filePath.replace(/^\//, ''), // 앞쪽 슬래시 제거
-        content: content || "",
+        content: currentContent || "",
         branch: "main",
         commit_message: commitMessage,
         description: description || "", // 상세 설명 추가
